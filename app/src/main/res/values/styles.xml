@@ -1,0 +1,13 @@
+<resources>
+    <style name="Theme.PropertyManagement" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- 主色调（品牌色） -->
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryVariant">@color/primary_variant</item>
+        <!-- 辅助色（强调色） -->
+        <item name="colorSecondary">@color/secondary</item>
+        <!-- 背景色 -->
+        <item name="android:windowBackground">@color/background</item>
+        <!-- 卡片圆角 -->
+        <item name="cardCornerRadius">8dp</item>
+    </style>
+</resources>

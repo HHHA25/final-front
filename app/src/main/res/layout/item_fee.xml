@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="8dp"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="2dp">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp">
+
+        <!-- 房号和月份 -->
+        <TextView
+            android:id="@+id/tv_house_number"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"/>
+
+        <TextView
+            android:id="@+id/tv_month"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:textColor="@android:color/darker_gray"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@+id/tv_house_number"/>
+
+        <!-- 住户姓名 -->
+        <TextView
+            android:id="@+id/tv_resident_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            app:layout_constraintStart_toStartOf="@+id/tv_house_number"
+            app:layout_constraintTop_toBottomOf="@+id/tv_house_number"
+            android:layout_marginTop="4dp"/> <!-- 修正：使用layout_marginTop -->
+
+        <!-- 金额和状态 -->
+        <TextView
+            android:id="@+id/tv_amount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/primary"
+            app:layout_constraintStart_toStartOf="@+id/tv_resident_name"
+            app:layout_constraintTop_toBottomOf="@+id/tv_resident_name"
+            android:layout_marginTop="8dp"/> <!-- 修正：使用layout_marginTop -->
+
+        <TextView
+            android:id="@+id/tv_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="2dp"
+            android:background="@drawable/status_bg"
+            android:textColor="@android:color/white"
+            app:layout_constraintEnd_toEndOf="@+id/tv_month"
+            app:layout_constraintTop_toTopOf="@+id/tv_amount"/>
+
+        <!-- 缴费日期（可选） -->
+        <TextView
+            android:id="@+id/tv_payment_date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="@android:color/darker_gray"
+            app:layout_constraintStart_toStartOf="@+id/tv_amount"
+            app:layout_constraintTop_toBottomOf="@+id/tv_amount"
+            android:layout_marginTop="4dp"/> <!-- 修正：使用layout_marginTop -->
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</androidx.cardview.widget.CardView>

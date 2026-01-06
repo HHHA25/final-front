@@ -1,0 +1,37 @@
+<resources>
+    <string name="app_name">物业管理系统</string>
+    <string name="title_login">物业管理系统 - 登录</string>
+    <string name="hint_username">请输入用户名</string>
+    <string name="hint_password">请输入密码</string>
+    <string name="btn_login">登录</string>
+    <string name="title_main">物业管理系统</string>
+    <string name="fee_management">管理费管理</string>
+    <string name="parking_management">车位管理</string>
+    <string name="repair_management">维修管理</string>
+    <string name="complaint_management">投诉管理</string>
+    <string name="add_fee">添加管理费记录</string>
+    <string name="add_parking">添加车位记录</string>
+    <string name="add_repair">添加维修记录</string>
+    <string name="add_complaint">添加投诉记录</string>
+    <string name="empty_fee">暂无管理费记录，点击右下角按钮添加</string>
+    <string name="empty_parking">暂无车位记录，点击右下角按钮添加</string>
+    <string name="empty_repair">暂无维修记录，点击右下角按钮添加</string>
+    <string name="empty_complaint">暂无投诉记录，点击右下角按钮添加</string>
+    <string name="delete_title">删除记录</string>
+    <string name="delete_message">确定要删除这条记录吗？</string>
+    <string name="btn_delete">删除</string>
+    <string name="btn_cancel">取消</string>
+    <string name="btn_save">保存</string>
+    <string name="toast_add_success">添加成功</string>
+    <string name="toast_add_fail">添加失败</string>
+    <string name="toast_update_success">更新成功</string>
+    <string name="toast_update_fail">更新失败</string>
+    <string name="toast_delete_success">删除成功</string>
+    <string name="toast_delete_fail">删除失败</string>
+    <string name="error_empty_fields">请填写必填字段</string>
+    <string name="error_invalid_amount">金额格式不正确</string>
+    <string name="complaint_title">投诉管理</string>
+    <string name="fee_title">管理费管理</string>
+    <string name="parking_title">车位管理</string>
+    <string name="repair_title">维修管理</string>
+</resources>
