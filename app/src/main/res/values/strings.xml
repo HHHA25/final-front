@@ -34,4 +34,6 @@
     <string name="fee_title">管理费管理</string>
     <string name="parking_title">车位管理</string>
     <string name="repair_title">维修管理</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>

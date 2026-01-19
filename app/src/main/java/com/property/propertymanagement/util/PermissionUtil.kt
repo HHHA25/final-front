@@ -12,6 +12,7 @@ object PermissionUtil {
     private const val KEY_NAME = "name"
     private const val KEY_TOKEN = "token"
     private const val KEY_IS_LOGGED_IN = "is_logged_in"
+    private const val KEY_LOGIN_TIME = "login_time"
 
     // 保存登录用户信息
     fun saveUser(context: Context, username: String, role: String, houseNumber: String?, userId: Long, name: String) {
@@ -22,8 +23,32 @@ object PermissionUtil {
             .putString(KEY_HOUSE_NUMBER, houseNumber)
             .putLong(KEY_USER_ID, userId)
             .putString(KEY_NAME, name)
+            .putLong(KEY_LOGIN_TIME, System.currentTimeMillis()) // 保存登录时间
             .putBoolean(KEY_IS_LOGGED_IN, true)
             .apply()
+    }
+    // 检查Token是否过期（7天）
+    fun isTokenExpired(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+        val loginTime = prefs.getLong(KEY_LOGIN_TIME, 0L)
+        if (loginTime == 0L) return true
+
+        val currentTime = System.currentTimeMillis()
+        val sevenDaysInMillis = 7 * 24 * 60 * 60 * 1000L
+
+        return (currentTime - loginTime) > sevenDaysInMillis
+    }
+
+    // 获取剩余时间（毫秒）
+    fun getRemainingTime(context: Context): Long {
+        val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+        val loginTime = prefs.getLong(KEY_LOGIN_TIME, 0L)
+        if (loginTime == 0L) return 0L
+
+        val currentTime = System.currentTimeMillis()
+        val sevenDaysInMillis = 7 * 24 * 60 * 60 * 1000L
+
+        return (loginTime + sevenDaysInMillis) - currentTime
     }
 
     // 保存token

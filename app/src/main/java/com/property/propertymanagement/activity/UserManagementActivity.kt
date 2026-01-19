@@ -1,11 +1,16 @@
+// 路径：com/property/propertymanagement/activity/UserManagementActivity.kt
+// 修改UserManagementActivity，实现直接添加用户
 package com.property.propertymanagement.activity
 
-import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
+import android.widget.AutoCompleteTextView
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -14,6 +19,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.property.propertymanagement.R
 import com.property.propertymanagement.network.RetrofitClient
+import com.property.propertymanagement.network.UserCreateRequest
 import com.property.propertymanagement.util.PermissionUtil
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.textfield.TextInputEditText
@@ -50,7 +56,7 @@ class UserManagementActivity : AppCompatActivity() {
         loadUserData()
 
         fabAdd.setOnClickListener {
-            showAddUserOptionsDialog()
+            showAddUserDialog()
         }
     }
 
@@ -87,6 +93,128 @@ class UserManagementActivity : AppCompatActivity() {
             }
 
             override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<List<com.property.propertymanagement.network.UserResponse>>>, t: Throwable) {
+                Toast.makeText(this@UserManagementActivity, "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
+            }
+        })
+    }
+
+    private fun showAddUserDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_add_user, null)
+        val etUsername = dialogView.findViewById<TextInputEditText>(R.id.et_username)
+        val etPassword = dialogView.findViewById<TextInputEditText>(R.id.et_password)
+        val etName = dialogView.findViewById<TextInputEditText>(R.id.et_name)
+        val etHouseNumber = dialogView.findViewById<TextInputEditText>(R.id.et_house_number)
+        val etPhone = dialogView.findViewById<TextInputEditText>(R.id.et_phone)
+        val spRole = dialogView.findViewById<Spinner>(R.id.sp_role) // 改为Spinner
+
+        // 设置角色选项
+        val roles = arrayOf("RESIDENT", "ADMIN")
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, roles)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spRole.adapter = adapter
+
+        // 设置默认选中项
+        spRole.setSelection(0) // 默认选中RESIDENT
+
+        // 角色选择监听器
+        spRole.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val selectedRole = roles[position]
+                if (selectedRole == "ADMIN") {
+                    etHouseNumber.setText("")
+                    etHouseNumber.isEnabled = false
+                    etHouseNumber.hint = "管理员无需房号"
+                    etHouseNumber.error = null // 清除错误
+                } else {
+                    etHouseNumber.isEnabled = true
+                }
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+                // 什么都不做
+            }
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("添加用户")
+            .setView(dialogView)
+            .setPositiveButton("添加") { _, _ ->
+                val username = etUsername.text.toString().trim()
+                val password = etPassword.text.toString().trim()
+                val name = etName.text.toString().trim()
+                val houseNumber = etHouseNumber.text.toString().trim()
+                val phone = etPhone.text.toString().trim()
+                val role = spRole.selectedItem.toString() // 从Spinner获取选中的角色
+
+                if (validateUserInput(username, password, name, houseNumber, role)) {
+                    createUser(username, password, name, houseNumber, phone, role)
+                }
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    private fun validateUserInput(
+        username: String,
+        password: String,
+        name: String,
+        houseNumber: String,
+        role: String
+    ): Boolean {
+        return when {
+            username.isEmpty() -> {
+                Toast.makeText(this, "请输入用户名", Toast.LENGTH_SHORT).show()
+                false
+            }
+            password.isEmpty() -> {
+                Toast.makeText(this, "请输入密码", Toast.LENGTH_SHORT).show()
+                false
+            }
+            password.length < 6 -> {
+                Toast.makeText(this, "密码长度不能少于6位", Toast.LENGTH_SHORT).show()
+                false
+            }
+            name.isEmpty() -> {
+                Toast.makeText(this, "请输入姓名", Toast.LENGTH_SHORT).show()
+                false
+            }
+            houseNumber.isEmpty() && role == "RESIDENT" -> {
+                Toast.makeText(this, "居民必须填写房号", Toast.LENGTH_SHORT).show()
+                false
+            }
+            role.isEmpty() || (!role.equals("ADMIN", true) && !role.equals("RESIDENT", true)) -> {
+                Toast.makeText(this, "角色只能是ADMIN或RESIDENT", Toast.LENGTH_SHORT).show()
+                false
+            }
+            else -> true
+        }
+    }
+
+    private fun createUser(username: String, password: String, name: String, houseNumber: String, phone: String?, role: String) {
+        val request = UserCreateRequest(
+            username = username,
+            password = password,
+            name = name,
+            houseNumber = if (houseNumber.isNotEmpty()) houseNumber else null,
+            phone = if (phone?.isNotEmpty() == true) phone else null,
+            role = role.uppercase()
+        )
+
+        apiService.createUser(request).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<Void>> {
+            override fun onResponse(
+                call: Call<com.property.propertymanagement.network.ApiResult<Void>>,
+                response: Response<com.property.propertymanagement.network.ApiResult<Void>>
+            ) {
+                if (response.isSuccessful && response.body()?.code == 200) {
+                    Toast.makeText(this@UserManagementActivity, "添加用户成功", Toast.LENGTH_SHORT).show()
+                    loadUserData() // 重新加载数据
+                } else {
+                    val errorMsg = response.body()?.msg ?: "添加用户失败"
+                    Toast.makeText(this@UserManagementActivity, errorMsg, Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<Void>>, t: Throwable) {
                 Toast.makeText(this@UserManagementActivity, "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
@@ -166,7 +294,8 @@ class UserManagementActivity : AppCompatActivity() {
                 true
             }
             R.id.action_approval -> {
-                startActivity(Intent(this, RegistrationApprovalActivity::class.java))
+                // 跳转到注册审批页面
+                startActivity(android.content.Intent(this, RegistrationApprovalActivity::class.java))
                 true
             }
             else -> super.onOptionsItemSelected(item)
@@ -176,85 +305,5 @@ class UserManagementActivity : AppCompatActivity() {
     private fun updateEmptyView() {
         findViewById<TextView>(R.id.tv_empty).visibility =
             if (userList.isEmpty()) View.VISIBLE else View.GONE
-    }
-    private fun showAddUserOptionsDialog() {
-        val options = arrayOf("直接添加用户", "审批注册请求")
-
-        AlertDialog.Builder(this)
-            .setTitle("添加用户")
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> showAddUserDialog()
-                    1 -> startActivity(Intent(this, RegistrationApprovalActivity::class.java))
-                }
-            }
-            .setNegativeButton("取消", null)
-            .show()
-    }
-
-    private fun showAddUserDialog() {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_add_user, null)
-        val etUsername = dialogView.findViewById<TextInputEditText>(R.id.et_username)
-        val etPassword = dialogView.findViewById<TextInputEditText>(R.id.et_password)
-        val etName = dialogView.findViewById<TextInputEditText>(R.id.et_name)
-        val etHouseNumber = dialogView.findViewById<TextInputEditText>(R.id.et_house_number)
-        val etPhone = dialogView.findViewById<TextInputEditText>(R.id.et_phone)
-        val etRole = dialogView.findViewById<TextInputEditText>(R.id.et_role)
-
-        AlertDialog.Builder(this)
-            .setTitle("直接添加用户")
-            .setView(dialogView)
-            .setPositiveButton("添加") { _, _ ->
-                val username = etUsername.text.toString().trim()
-                val password = etPassword.text.toString().trim()
-                val name = etName.text.toString().trim()
-                val houseNumber = etHouseNumber.text.toString().trim()
-                val phone = etPhone.text.toString().trim()
-                val role = etRole.text.toString().trim()
-
-                if (validateUserInput(username, password, name, houseNumber, role)) {
-                    addUserDirectly(username, password, name, houseNumber, phone, role)
-                }
-            }
-            .setNegativeButton("取消", null)
-            .show()
-    }
-
-    private fun validateUserInput(
-        username: String,
-        password: String,
-        name: String,
-        houseNumber: String,
-        role: String
-    ): Boolean {
-        return when {
-            username.isEmpty() -> {
-                Toast.makeText(this, "请输入用户名", Toast.LENGTH_SHORT).show()
-                false
-            }
-            password.isEmpty() -> {
-                Toast.makeText(this, "请输入密码", Toast.LENGTH_SHORT).show()
-                false
-            }
-            name.isEmpty() -> {
-                Toast.makeText(this, "请输入姓名", Toast.LENGTH_SHORT).show()
-                false
-            }
-            houseNumber.isEmpty() && role != "ADMIN" -> {
-                Toast.makeText(this, "居民必须填写房号", Toast.LENGTH_SHORT).show()
-                false
-            }
-            role.isEmpty() -> {
-                Toast.makeText(this, "请输入角色(ADMIN/RESIDENT)", Toast.LENGTH_SHORT).show()
-                false
-            }
-            else -> true
-        }
-    }
-
-    private fun addUserDirectly(username: String, password: String, name: String, houseNumber: String, phone: String?, role: String) {
-        // 注意：后端需要提供直接添加用户的接口
-        // 这里只是示例，实际需要调用后端的添加用户接口
-        Toast.makeText(this, "直接添加用户功能需要后端接口支持", Toast.LENGTH_SHORT).show()
     }
 }

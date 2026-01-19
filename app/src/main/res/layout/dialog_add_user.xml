@@ -1,4 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
+<!-- 路径：res/layout/dialog_add_user.xml -->
+<!-- 改进：使用下拉选择角色而不是文本输入 -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
@@ -88,21 +89,19 @@
                 android:maxLines="1"/>
         </com.google.android.material.textfield.TextInputLayout>
 
+        <!-- 改为下拉选择角色 -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/til_role"
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="角色 (ADMIN/RESIDENT)"
+            android:hint="角色"
             android:layout_marginTop="8dp">
 
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/et_role"
+            <androidx.appcompat.widget.AppCompatSpinner
+                android:id="@+id/sp_role"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="text"
-                android:maxLines="1"
-                android:text="RESIDENT"/>
+                android:layout_height="wrap_content"/>
         </com.google.android.material.textfield.TextInputLayout>
 
     </LinearLayout>

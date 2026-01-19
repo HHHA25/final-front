@@ -3,15 +3,9 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
-        android:id="@+id/action_profile"
-        android:icon="@android:drawable/ic_menu_info_details"
-        android:title="用户信息"
-        app:showAsAction="ifRoom" />
-
-    <item
-        android:id="@+id/action_logout"
-        android:icon="@android:drawable/ic_lock_power_off"
-        android:title="退出登录"
+        android:id="@+id/action_refresh"
+        android:icon="@drawable/ic_refresh"
+        android:title="刷新"
         app:showAsAction="ifRoom" />
 
 </menu>

@@ -184,6 +184,10 @@ interface ApiService {
 
     @GET("api/house/{houseId}")
     fun getHouseDetail(@Path("houseId") houseId: Long): Call<ApiResult<HouseResponse>>
+
+    // 直接创建用户（管理员）
+    @POST("api/user/admin/create")
+    fun createUser(@Body request: UserCreateRequest): Call<ApiResult<Void>>
 }
 
 
@@ -481,4 +485,13 @@ data class HouseUpdateRequest(
     val residentType: String?,
     val contractStartDate: String?,
     val contractEndDate: String?
+)
+// 添加用户创建请求类
+data class UserCreateRequest(
+    val username: String,
+    val password: String,
+    val name: String,
+    val houseNumber: String?,
+    val phone: String?,
+    val role: String
 )

@@ -1,41 +1,52 @@
 package com.property.propertymanagement
 
+import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
-import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.GridLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.property.propertymanagement.activity.*
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
+import androidx.fragment.app.FragmentTransaction
 import com.property.propertymanagement.util.PermissionUtil
 import com.property.propertymanagement.R
+import com.property.propertymanagement.fragment.HomeFragment
 import com.property.propertymanagement.network.RetrofitClient
+import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.property.propertymanagement.activity.ComplaintActivity
+import com.property.propertymanagement.activity.FeeManagementActivity
+import com.property.propertymanagement.activity.LoginActivity
+import com.property.propertymanagement.activity.ProfileActivity
+import com.property.propertymanagement.activity.RepairActivity
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 
 class MainActivity : AppCompatActivity() {
-    private lateinit var rvFunctions: RecyclerView
+    private lateinit var bottomNavigation: BottomNavigationView
     private lateinit var apiService: com.property.propertymanagement.network.ApiService
     private var pendingCount = 0
+    private var currentFragmentTag = "home"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContentView(R.layout.activity_main_with_nav)
 
         // 设置Toolbar
         setSupportActionBar(findViewById(R.id.toolbar))
 
         apiService = RetrofitClient.createApiService(this)
         initViews()
-        loadFunctionCards()
+        setupBottomNavigation()
+
+        // 默认显示首页
+        showFragment(HomeFragment(), "home")
 
         // 显示欢迎信息
         showWelcomeMessage()
@@ -49,15 +60,60 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initViews() {
-        rvFunctions = findViewById(R.id.rv_functions)
-        rvFunctions.layoutManager = GridLayoutManager(this, 2)
+        bottomNavigation = findViewById(R.id.bottom_navigation)
     }
 
-    private fun loadFunctionCards() {
-        val functionItems = createFunctionItems()
-        rvFunctions.adapter = FunctionAdapter(this, functionItems, pendingCount) { item ->
-            startActivity(Intent(this, item.targetClass))
+    private fun setupBottomNavigation() {
+        bottomNavigation.setOnNavigationItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_home -> {
+                    showFragment(HomeFragment(), "home")
+                    true
+                }
+                R.id.nav_fee -> {
+                    startActivity(Intent(this, FeeManagementActivity::class.java))
+                    true
+                }
+                R.id.nav_repair -> {
+                    startActivity(Intent(this, RepairActivity::class.java))
+                    true
+                }
+                R.id.nav_complaint -> {
+                    startActivity(Intent(this, ComplaintActivity::class.java))
+                    true
+                }
+                R.id.nav_profile -> {
+                    // 跳转到个人中心页面（全屏Activity）
+                    startActivity(Intent(this, ProfileActivity::class.java))
+                    true
+                }
+                else -> false
+            }
         }
+    }
+
+    private fun showFragment(fragment: Fragment, tag: String) {
+        if (currentFragmentTag == tag) return
+
+        val fragmentManager = supportFragmentManager
+        val transaction = fragmentManager.beginTransaction()
+
+        // 隐藏当前Fragment
+        val currentFragment = fragmentManager.findFragmentByTag(currentFragmentTag)
+        if (currentFragment != null) {
+            transaction.hide(currentFragment)
+        }
+
+        // 如果Fragment已经存在，显示它；否则添加
+        val targetFragment = fragmentManager.findFragmentByTag(tag)
+        if (targetFragment != null) {
+            transaction.show(targetFragment)
+        } else {
+            transaction.add(R.id.fragment_container, fragment, tag)
+        }
+
+        transaction.commit()
+        currentFragmentTag = tag
     }
 
     private fun loadPendingCount() {
@@ -68,32 +124,23 @@ class MainActivity : AppCompatActivity() {
             ) {
                 if (response.isSuccessful && response.body()?.code == 200) {
                     pendingCount = response.body()?.data ?: 0
-                    loadFunctionCards()
+                    // 更新首页的待审批数量（如果首页Fragment存在）
+                    updateHomeFragmentBadge()
                 }
             }
 
             override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<Int>>, t: Throwable) {
-                // 静默失败，不影响主功能
+                // 静默失败
             }
         })
     }
 
-    private fun createFunctionItems(): List<FunctionItem> {
-        val items = mutableListOf<FunctionItem>()
-        items.add(FunctionItem("楼栋管理", "管理小区楼栋和房屋信息", R.drawable.ic_building, BuildingManagementActivity::class.java))
-        items.add(FunctionItem("管理费管理", "记录与管理小区管理费", R.mipmap.ic_launcher, FeeManagementActivity::class.java))
-        items.add(FunctionItem("车位管理", "管理小区车位分配与使用", R.mipmap.ic_launcher, ParkingActivity::class.java))
-        items.add(FunctionItem("维修管理", "处理业主维修申请与记录", R.mipmap.ic_launcher, RepairActivity::class.java))
-        items.add(FunctionItem("投诉管理", "记录与跟进业主投诉", R.mipmap.ic_launcher, ComplaintActivity::class.java))
-
-        if (PermissionUtil.isAdmin(this)) {
-            items.add(FunctionItem("用户管理", "管理用户和注册审批", R.mipmap.ic_launcher, UserManagementActivity::class.java))
-        }
-
-        return items
+    private fun updateHomeFragmentBadge() {
+        val homeFragment = supportFragmentManager.findFragmentByTag("home") as? HomeFragment
+        homeFragment?.updatePendingCount(pendingCount)
     }
 
-    // 添加菜单
+    // 移除菜单（因为现在在个人中心退出）
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.main_menu, menu)
         return true
@@ -101,69 +148,16 @@ class MainActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
-            R.id.action_logout -> {
-                showLogoutConfirmation()
-                true
-            }
-            R.id.action_profile -> {
-                showUserProfile()
+            R.id.action_refresh -> {
+                // 刷新数据
+                if (currentFragmentTag == "home") {
+                    val homeFragment = supportFragmentManager.findFragmentByTag("home") as? HomeFragment
+                    homeFragment?.refreshData()
+                }
                 true
             }
             else -> super.onOptionsItemSelected(item)
         }
-    }
-
-    private fun showLogoutConfirmation() {
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("退出登录")
-            .setMessage("确定要退出登录吗？")
-            .setPositiveButton("退出") { _, _ ->
-                logout()
-            }
-            .setNegativeButton("取消", null)
-            .show()
-    }
-
-    private fun logout() {
-        // 清除所有保存的用户信息
-        PermissionUtil.logout(this)
-
-        val sharedPref = getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
-        with(sharedPref.edit()) {
-            clear()
-            apply()
-        }
-
-        Toast.makeText(this, "已退出登录", Toast.LENGTH_SHORT).show()
-
-        // 跳转到登录页面并清除返回栈
-        val intent = Intent(this, LoginActivity::class.java)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        startActivity(intent)
-        finish()
-    }
-
-    private fun showUserProfile() {
-        val username = PermissionUtil.getCurrentUsername(this)
-        val role = PermissionUtil.getCurrentRole(this)
-        val houseNumber = PermissionUtil.getCurrentHouseNumber(this)
-        val name = PermissionUtil.getCurrentUserName(this)
-
-        val roleText = if (role == "ADMIN") "管理员" else "居民"
-        val houseText = if (houseNumber.isNullOrEmpty()) "无" else houseNumber
-
-        val message = """
-            用户名: $username
-            姓名: ${name ?: "未设置"}
-            角色: $roleText
-            房号: $houseText
-        """.trimIndent()
-
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("用户信息")
-            .setMessage(message)
-            .setPositiveButton("确定", null)
-            .show()
     }
 
     private fun showWelcomeMessage() {
@@ -174,52 +168,30 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, "欢迎回来，$username ($roleText)", Toast.LENGTH_SHORT).show()
     }
 
-    // 功能项数据类
-    data class FunctionItem(
-        val title: String,
-        val desc: String,
-        val iconRes: Int,
-        val targetClass: Class<*>
-    )
-
-    // 功能列表适配器
-    class FunctionAdapter(
-        private val context: Context,
-        private val items: List<FunctionItem>,
-        private val pendingCount: Int,
-        private val onItemClick: (FunctionItem) -> Unit
-    ) : RecyclerView.Adapter<FunctionAdapter.ViewHolder>() {
-
-        inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-            val ivIcon: ImageView = itemView.findViewById(R.id.iv_icon)
-            val tvTitle: TextView = itemView.findViewById(R.id.tv_title)
-            val tvDesc: TextView = itemView.findViewById(R.id.tv_desc)
-            val tvBadge: TextView = itemView.findViewById(R.id.tv_badge)
-        }
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            val view = android.view.LayoutInflater.from(parent.context)
-                .inflate(R.layout.item_function_card, parent, false)
-            return ViewHolder(view)
-        }
-
-        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            val item = items[position]
-            holder.ivIcon.setImageResource(item.iconRes)
-            holder.tvTitle.text = item.title
-            holder.tvDesc.text = item.desc
-
-            // 显示待审批数量角标
-            if (item.title == "用户管理" && pendingCount > 0) {
-                holder.tvBadge.visibility = View.VISIBLE
-                holder.tvBadge.text = if (pendingCount > 99) "99+" else pendingCount.toString()
-            } else {
-                holder.tvBadge.visibility = View.GONE
+    // 处理Token过期，返回到登录页面
+    fun handleTokenExpired() {
+        AlertDialog.Builder(this)
+            .setTitle("登录已过期")
+            .setMessage("您的登录状态已过期，请重新登录")
+            .setCancelable(false)
+            .setPositiveButton("重新登录") { _, _ ->
+                logout()
             }
+            .show()
+    }
 
-            holder.itemView.setOnClickListener { onItemClick(item) }
+    private fun logout() {
+        PermissionUtil.clearAllUserData(this)
+
+        val sharedPref = getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+        with(sharedPref.edit()) {
+            clear()
+            apply()
         }
 
-        override fun getItemCount() = items.size
+        val intent = Intent(this, LoginActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        startActivity(intent)
+        finish()
     }
 }
