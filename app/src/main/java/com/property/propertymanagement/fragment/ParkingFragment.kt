@@ -1,65 +1,74 @@
-package com.property.propertymanagement.activity
+// ParkingFragment.kt
+package com.property.propertymanagement.fragment
 
-import android.content.Context
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.android.material.textfield.TextInputEditText
 import com.property.propertymanagement.R
 import com.property.propertymanagement.adapter.ParkingAdapter
 import com.property.propertymanagement.network.ParkingAddRequest
 import com.property.propertymanagement.network.ParkingUpdateRequest
 import com.property.propertymanagement.network.RetrofitClient
 import com.property.propertymanagement.util.PermissionUtil
-import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.android.material.textfield.TextInputEditText
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 
-class ParkingActivity : AppCompatActivity() {
+class ParkingFragment : Fragment() {
     private lateinit var rvParkingRecords: RecyclerView
     private lateinit var fabAdd: FloatingActionButton
     private lateinit var parkingAdapter: ParkingAdapter
     private var parkingList = mutableListOf<com.property.propertymanagement.network.ParkingResponse>()
     private lateinit var apiService: com.property.propertymanagement.network.ApiService
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_parking)
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        return inflater.inflate(R.layout.fragment_parking, container, false)
+    }
 
-        apiService = RetrofitClient.createApiService(this)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        apiService = RetrofitClient.createApiService(requireContext())
 
-        initViews()
+        initViews(view)
         initRecyclerView()
         loadParkingData()
 
-        // 根据角色控制"添加"按钮显示
-        fabAdd.visibility = if (PermissionUtil.isAdmin(this)) View.VISIBLE else View.GONE
+        fabAdd.visibility = if (PermissionUtil.isAdmin(requireContext())) View.VISIBLE else View.GONE
     }
 
-    private fun initViews() {
-        rvParkingRecords = findViewById(R.id.rv_parking_records)
-        fabAdd = findViewById(R.id.fab_add)
+    override fun onResume() {
+        super.onResume()
+        loadParkingData()
+    }
 
-        fabAdd.setOnClickListener {
-            showAddParkingDialog()
-        }
+    private fun initViews(view: View) {
+        rvParkingRecords = view.findViewById(R.id.rv_parking_records)
+        fabAdd = view.findViewById(R.id.fab_add)
+        fabAdd.setOnClickListener { showAddParkingDialog() }
     }
 
     private fun initRecyclerView() {
-        parkingAdapter = ParkingAdapter(this, parkingList,
+        parkingAdapter = ParkingAdapter(requireContext(), parkingList,
             onItemClick = { parking ->
-                if (PermissionUtil.isAdmin(this)) {
+                if (PermissionUtil.isAdmin(requireContext())) {
                     showEditParkingDialog(parking)
                 }
             },
             onItemLongClick = { parking ->
-                if (PermissionUtil.isAdmin(this)) {
+                if (PermissionUtil.isAdmin(requireContext())) {
                     showDeleteConfirmationDialog(parking.id)
                     true
                 } else {
@@ -67,13 +76,12 @@ class ParkingActivity : AppCompatActivity() {
                 }
             }
         )
-
-        rvParkingRecords.layoutManager = LinearLayoutManager(this)
+        rvParkingRecords.layoutManager = LinearLayoutManager(requireContext())
         rvParkingRecords.adapter = parkingAdapter
     }
 
-    private fun loadParkingData() {
-        if (PermissionUtil.isAdmin(this)) {
+    fun loadParkingData() {
+        if (PermissionUtil.isAdmin(requireContext())) {
             loadAllParkings()
         } else {
             loadMyParkings()
@@ -93,20 +101,20 @@ class ParkingActivity : AppCompatActivity() {
                     parkingAdapter.notifyDataSetChanged()
                     updateEmptyView()
                 } else {
-                    Toast.makeText(this@ParkingActivity, "加载失败", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "加载失败", Toast.LENGTH_SHORT).show()
                 }
             }
 
             override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ParkingPageResponse>>, t: Throwable) {
-                Toast.makeText(this@ParkingActivity, "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
     }
 
     private fun loadMyParkings() {
-        val houseNumber = PermissionUtil.getCurrentHouseNumber(this)
+        val houseNumber = PermissionUtil.getCurrentHouseNumber(requireContext())
         if (houseNumber.isNullOrEmpty()) {
-            Toast.makeText(this, "无法获取房号信息", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), "无法获取房号信息", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -122,12 +130,12 @@ class ParkingActivity : AppCompatActivity() {
                     parkingAdapter.notifyDataSetChanged()
                     updateEmptyView()
                 } else {
-                    Toast.makeText(this@ParkingActivity, "加载失败", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "加载失败", Toast.LENGTH_SHORT).show()
                 }
             }
 
             override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ParkingPageResponse>>, t: Throwable) {
-                Toast.makeText(this@ParkingActivity, "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
     }
@@ -140,7 +148,7 @@ class ParkingActivity : AppCompatActivity() {
         val etCarPlate = dialogView.findViewById<TextInputEditText>(R.id.et_car_plate)
         val etStatus = dialogView.findViewById<TextInputEditText>(R.id.et_status)
 
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(requireContext())
             .setTitle("添加车位")
             .setView(dialogView)
             .setPositiveButton("添加") { _, _ ->
@@ -167,23 +175,23 @@ class ParkingActivity : AppCompatActivity() {
     ): Boolean {
         return when {
             parkingNumber.isEmpty() -> {
-                Toast.makeText(this, "请输入车位号", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "请输入车位号", Toast.LENGTH_SHORT).show()
                 false
             }
             houseNumber.isEmpty() -> {
-                Toast.makeText(this, "请输入房号", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "请输入房号", Toast.LENGTH_SHORT).show()
                 false
             }
             residentName.isEmpty() -> {
-                Toast.makeText(this, "请输入住户姓名", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "请输入住户姓名", Toast.LENGTH_SHORT).show()
                 false
             }
             carPlate.isEmpty() -> {
-                Toast.makeText(this, "请输入车牌号", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "请输入车牌号", Toast.LENGTH_SHORT).show()
                 false
             }
             status.isEmpty() -> {
-                Toast.makeText(this, "请输入状态", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "请输入状态", Toast.LENGTH_SHORT).show()
                 false
             }
             else -> true
@@ -199,16 +207,16 @@ class ParkingActivity : AppCompatActivity() {
                 response: Response<com.property.propertymanagement.network.ApiResult<Void>>
             ) {
                 if (response.isSuccessful && response.body()?.code == 200) {
-                    Toast.makeText(this@ParkingActivity, "添加成功", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "添加成功", Toast.LENGTH_SHORT).show()
                     loadParkingData()
                 } else {
                     val errorMsg = response.body()?.msg ?: "添加失败"
-                    Toast.makeText(this@ParkingActivity, errorMsg, Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), errorMsg, Toast.LENGTH_SHORT).show()
                 }
             }
 
             override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<Void>>, t: Throwable) {
-                Toast.makeText(this@ParkingActivity, "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
     }
@@ -221,14 +229,13 @@ class ParkingActivity : AppCompatActivity() {
         val etCarPlate = dialogView.findViewById<TextInputEditText>(R.id.et_car_plate)
         val etStatus = dialogView.findViewById<TextInputEditText>(R.id.et_status)
 
-        // 填充现有数据
         etParkingNumber.setText(parking.parkingNumber)
         etHouseNumber.setText(parking.houseNumber)
         etResidentName.setText(parking.residentName)
         etCarPlate.setText(parking.carPlate)
         etStatus.setText(parking.status)
 
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(requireContext())
             .setTitle("编辑车位")
             .setView(dialogView)
             .setPositiveButton("更新") { _, _ ->
@@ -255,22 +262,22 @@ class ParkingActivity : AppCompatActivity() {
                 response: Response<com.property.propertymanagement.network.ApiResult<Void>>
             ) {
                 if (response.isSuccessful && response.body()?.code == 200) {
-                    Toast.makeText(this@ParkingActivity, "更新成功", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "更新成功", Toast.LENGTH_SHORT).show()
                     loadParkingData()
                 } else {
                     val errorMsg = response.body()?.msg ?: "更新失败"
-                    Toast.makeText(this@ParkingActivity, errorMsg, Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), errorMsg, Toast.LENGTH_SHORT).show()
                 }
             }
 
             override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<Void>>, t: Throwable) {
-                Toast.makeText(this@ParkingActivity, "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
     }
 
     private fun showDeleteConfirmationDialog(parkingId: Long) {
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(requireContext())
             .setTitle("删除记录")
             .setMessage("确定要删除这条记录吗？")
             .setPositiveButton("删除") { _, _ ->
@@ -287,22 +294,22 @@ class ParkingActivity : AppCompatActivity() {
                 response: Response<com.property.propertymanagement.network.ApiResult<Void>>
             ) {
                 if (response.isSuccessful && response.body()?.code == 200) {
-                    Toast.makeText(this@ParkingActivity, "删除成功", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "删除成功", Toast.LENGTH_SHORT).show()
                     loadParkingData()
                 } else {
                     val errorMsg = response.body()?.msg ?: "删除失败"
-                    Toast.makeText(this@ParkingActivity, errorMsg, Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), errorMsg, Toast.LENGTH_SHORT).show()
                 }
             }
 
             override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<Void>>, t: Throwable) {
-                Toast.makeText(this@ParkingActivity, "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
     }
 
     private fun updateEmptyView() {
-        findViewById<TextView>(R.id.tv_empty).visibility =
+        view?.findViewById<TextView>(R.id.tv_empty)?.visibility =
             if (parkingList.isEmpty()) View.VISIBLE else View.GONE
     }
 }

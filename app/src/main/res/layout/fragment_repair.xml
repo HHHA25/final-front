@@ -1,14 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background"
-    tools:context=".activity.RepairActivity">
+    android:background="@color/background">
 
-    <!-- 顶部应用栏 -->
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
@@ -19,12 +15,10 @@
             android:layout_height="?attr/actionBarSize"
             android:background="@color/primary"
             app:title="维修管理"
-            app:titleTextColor="@color/on_primary"
-            app:layout_scrollFlags="scroll|enterAlways" />
+            app:titleTextColor="@color/on_primary" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
-    <!-- 维修记录列表 -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_repair_records"
         android:layout_width="match_parent"
@@ -32,17 +26,15 @@
         app:layout_behavior="@string/appbar_scrolling_view_behavior"
         android:padding="16dp" />
 
-    <!-- 空数据提示 -->
     <TextView
         android:id="@+id/tv_empty"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:text="暂无维修记录，点击右下角按钮添加"
+        android:text="暂无维修记录"
         android:gravity="center"
         android:visibility="gone"
         app:layout_behavior="@string/appbar_scrolling_view_behavior"/>
 
-    <!-- 浮动添加按钮（修复margin属性） -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_add"
         android:layout_width="wrap_content"
@@ -52,6 +44,6 @@
         app:layout_anchor="@id/rv_repair_records"
         app:layout_anchorGravity="bottom|end"
         android:layout_margin="16dp"
-    app:backgroundTint="@color/secondary" />
+        app:backgroundTint="@color/secondary" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

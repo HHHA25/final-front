@@ -72,13 +72,17 @@ class HomeFragment : Fragment() {
         loadFunctionCards()
     }
 
+    // 在HomeFragment中修改createFunctionItems方法
     private fun createFunctionItems(): List<FunctionItem> {
         val items = mutableListOf<FunctionItem>()
         items.add(FunctionItem("楼栋管理", "管理小区楼栋和房屋信息", R.drawable.ic_building, BuildingManagementActivity::class.java))
-        items.add(FunctionItem("管理费管理", "记录与管理小区管理费", R.drawable.ic_fee, FeeManagementActivity::class.java))
-        items.add(FunctionItem("车位管理", "管理小区车位分配与使用", R.drawable.ic_parking, ParkingActivity::class.java))
-        items.add(FunctionItem("维修管理", "处理业主维修申请与记录", R.drawable.ic_repair, RepairActivity::class.java))
-        items.add(FunctionItem("投诉管理", "记录与跟进业主投诉", R.drawable.ic_complaint, ComplaintActivity::class.java))
+        items.add(FunctionItem("房屋管理", "管理小区房屋信息", R.drawable.ic_house, HouseManagementActivity::class.java))
+
+        // 移除原来的功能卡片，因为现在通过底部导航栏访问
+        // items.add(FunctionItem("管理费管理", "记录与管理小区管理费", R.drawable.ic_fee, FeeManagementActivity::class.java))
+        // items.add(FunctionItem("车位管理", "管理小区车位分配与使用", R.drawable.ic_parking, ParkingActivity::class.java))
+        // items.add(FunctionItem("维修管理", "处理业主维修申请与记录", R.drawable.ic_repair, RepairActivity::class.java))
+        // items.add(FunctionItem("投诉管理", "记录与跟进业主投诉", R.drawable.ic_complaint, ComplaintActivity::class.java))
 
         if (PermissionUtil.isAdmin(requireContext())) {
             items.add(FunctionItem("用户管理", "管理用户和注册审批", R.drawable.ic_user, UserManagementActivity::class.java))
