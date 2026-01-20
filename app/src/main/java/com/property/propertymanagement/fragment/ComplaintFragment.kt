@@ -1,11 +1,13 @@
-package com.property.propertymanagement.activity
+package com.property.propertymanagement.fragment
 
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.property.propertymanagement.R
@@ -20,33 +22,33 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 
-class ComplaintActivity : AppCompatActivity() {
+class ComplaintFragment : Fragment() {
     private lateinit var rvComplaintRecords: RecyclerView
     private lateinit var fabAdd: FloatingActionButton
-    private lateinit var tvEmpty: TextView
     private lateinit var complaintAdapter: ComplaintAdapter
     private var complaintList = mutableListOf<com.property.propertymanagement.network.ComplaintResponse>()
     private lateinit var apiService: com.property.propertymanagement.network.ApiService
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_complaint)
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        return inflater.inflate(R.layout.fragment_complaint, container, false)
+    }
 
-        apiService = RetrofitClient.createApiService(this)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
-        initViews()
+        apiService = RetrofitClient.createApiService(requireContext())
+
+        rvComplaintRecords = view.findViewById(R.id.rv_complaint_records)
+        fabAdd = view.findViewById(R.id.fab_add)
+
         initRecyclerView()
         loadComplaintData()
 
-        // 所有人都可以看到添加按钮
         fabAdd.visibility = View.VISIBLE
-    }
-
-    private fun initViews() {
-        // 使用安全的方式查找视图
-        rvComplaintRecords = findViewById(R.id.rv_complaint_records)
-        fabAdd = findViewById(R.id.fab_add)
-        tvEmpty = findViewById(R.id.tv_empty)
 
         fabAdd.setOnClickListener {
             showAddComplaintDialog()
@@ -57,13 +59,13 @@ class ComplaintActivity : AppCompatActivity() {
         complaintAdapter = ComplaintAdapter(complaintList,
             onItemClick = { complaint ->
                 // 管理员可以处理投诉
-                if (PermissionUtil.isAdmin(this)) {
+                if (PermissionUtil.isAdmin(requireContext())) {
                     showUpdateComplaintDialog(complaint)
                 }
             },
             onItemLongClick = { complaint ->
                 // 管理员可以删除投诉
-                if (PermissionUtil.isAdmin(this)) {
+                if (PermissionUtil.isAdmin(requireContext())) {
                     showDeleteConfirmationDialog(complaint.id)
                     true
                 } else {
@@ -72,12 +74,12 @@ class ComplaintActivity : AppCompatActivity() {
             }
         )
 
-        rvComplaintRecords.layoutManager = LinearLayoutManager(this)
+        rvComplaintRecords.layoutManager = LinearLayoutManager(requireContext())
         rvComplaintRecords.adapter = complaintAdapter
     }
 
-    private fun loadComplaintData() {
-        if (PermissionUtil.isAdmin(this)) {
+    fun loadComplaintData() {
+        if (PermissionUtil.isAdmin(requireContext())) {
             loadAllComplaints()
         } else {
             loadMyComplaints()
@@ -97,20 +99,20 @@ class ComplaintActivity : AppCompatActivity() {
                     complaintAdapter.notifyDataSetChanged()
                     updateEmptyView()
                 } else {
-                    Toast.makeText(this@ComplaintActivity, "加载失败", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "加载失败", Toast.LENGTH_SHORT).show()
                 }
             }
 
             override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ComplaintPageResponse>>, t: Throwable) {
-                Toast.makeText(this@ComplaintActivity, "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
     }
 
     private fun loadMyComplaints() {
-        val houseNumber = PermissionUtil.getCurrentHouseNumber(this)
+        val houseNumber = PermissionUtil.getCurrentHouseNumber(requireContext())
         if (houseNumber.isNullOrEmpty()) {
-            Toast.makeText(this, "无法获取房号信息", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), "无法获取房号信息", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -126,12 +128,12 @@ class ComplaintActivity : AppCompatActivity() {
                     complaintAdapter.notifyDataSetChanged()
                     updateEmptyView()
                 } else {
-                    Toast.makeText(this@ComplaintActivity, "加载失败", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "加载失败", Toast.LENGTH_SHORT).show()
                 }
             }
 
             override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ComplaintPageResponse>>, t: Throwable) {
-                Toast.makeText(this@ComplaintActivity, "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
     }
@@ -145,15 +147,15 @@ class ComplaintActivity : AppCompatActivity() {
         val etContent = dialogView.findViewById<TextInputEditText>(R.id.et_content)
 
         // 如果是居民，自动填充房号和姓名
-        if (!PermissionUtil.isAdmin(this)) {
-            val houseNumber = PermissionUtil.getCurrentHouseNumber(this)
-            val residentName = PermissionUtil.getCurrentUserName(this)
+        if (!PermissionUtil.isAdmin(requireContext())) {
+            val houseNumber = PermissionUtil.getCurrentHouseNumber(requireContext())
+            val residentName = PermissionUtil.getCurrentUserName(requireContext())
             etHouseNumber.setText(houseNumber)
             etResidentName.setText(residentName)
-            etHouseNumber.isEnabled = false // 居民不能修改房号
+            etHouseNumber.isEnabled = false
         }
 
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(requireContext())
             .setTitle("提交投诉")
             .setView(dialogView)
             .setPositiveButton("提交") { _, _ ->
@@ -180,23 +182,23 @@ class ComplaintActivity : AppCompatActivity() {
     ): Boolean {
         return when {
             houseNumber.isEmpty() -> {
-                Toast.makeText(this, "请输入房号", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "请输入房号", Toast.LENGTH_SHORT).show()
                 false
             }
             residentName.isEmpty() -> {
-                Toast.makeText(this, "请输入住户姓名", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "请输入住户姓名", Toast.LENGTH_SHORT).show()
                 false
             }
             phone.isEmpty() -> {
-                Toast.makeText(this, "请输入联系电话", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "请输入联系电话", Toast.LENGTH_SHORT).show()
                 false
             }
             type.isEmpty() -> {
-                Toast.makeText(this, "请输入投诉类型", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "请输入投诉类型", Toast.LENGTH_SHORT).show()
                 false
             }
             content.isEmpty() -> {
-                Toast.makeText(this, "请输入投诉内容", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "请输入投诉内容", Toast.LENGTH_SHORT).show()
                 false
             }
             else -> true
@@ -212,16 +214,16 @@ class ComplaintActivity : AppCompatActivity() {
                 response: Response<com.property.propertymanagement.network.ApiResult<Void>>
             ) {
                 if (response.isSuccessful && response.body()?.code == 200) {
-                    Toast.makeText(this@ComplaintActivity, "提交成功", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "提交成功", Toast.LENGTH_SHORT).show()
                     loadComplaintData()
                 } else {
                     val errorMsg = response.body()?.msg ?: "提交失败"
-                    Toast.makeText(this@ComplaintActivity, errorMsg, Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), errorMsg, Toast.LENGTH_SHORT).show()
                 }
             }
 
             override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<Void>>, t: Throwable) {
-                Toast.makeText(this@ComplaintActivity, "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
     }
@@ -231,11 +233,10 @@ class ComplaintActivity : AppCompatActivity() {
         val etStatus = dialogView.findViewById<TextInputEditText>(R.id.et_status)
         val etHandleResult = dialogView.findViewById<TextInputEditText>(R.id.et_handle_result)
 
-        // 设置默认值
         etStatus.setText(complaint.status)
         etHandleResult.setText(complaint.handleResult ?: "")
 
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(requireContext())
             .setTitle("更新投诉状态")
             .setView(dialogView)
             .setPositiveButton("更新") { _, _ ->
@@ -245,7 +246,7 @@ class ComplaintActivity : AppCompatActivity() {
                 if (status.isNotEmpty()) {
                     updateComplaint(complaint.id, status, handleResult)
                 } else {
-                    Toast.makeText(this, "请输入状态", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "请输入状态", Toast.LENGTH_SHORT).show()
                 }
             }
             .setNegativeButton("取消", null)
@@ -261,33 +262,33 @@ class ComplaintActivity : AppCompatActivity() {
                 response: Response<com.property.propertymanagement.network.ApiResult<Void>>
             ) {
                 if (response.isSuccessful && response.body()?.code == 200) {
-                    Toast.makeText(this@ComplaintActivity, "更新成功", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "更新成功", Toast.LENGTH_SHORT).show()
                     loadComplaintData()
                 } else {
                     val errorMsg = response.body()?.msg ?: "更新失败"
-                    Toast.makeText(this@ComplaintActivity, errorMsg, Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), errorMsg, Toast.LENGTH_SHORT).show()
                 }
             }
 
             override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<Void>>, t: Throwable) {
-                Toast.makeText(this@ComplaintActivity, "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
     }
 
     private fun showDeleteConfirmationDialog(complaintId: Long) {
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(requireContext())
             .setTitle("删除记录")
             .setMessage("确定要删除这条记录吗？")
             .setPositiveButton("删除") { _, _ ->
-                // 注意：后端可能没有提供删除投诉的接口
-                Toast.makeText(this, "删除功能暂未实现", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "删除功能暂未实现", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("取消", null)
             .show()
     }
 
     private fun updateEmptyView() {
-        tvEmpty.visibility = if (complaintList.isEmpty()) View.VISIBLE else View.GONE
+        val tvEmpty = view?.findViewById<TextView>(R.id.tv_empty)
+        tvEmpty?.visibility = if (complaintList.isEmpty()) View.VISIBLE else View.GONE
     }
 }

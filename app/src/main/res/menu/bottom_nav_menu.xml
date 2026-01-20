@@ -22,7 +22,8 @@
         android:title="投诉" />
 
     <item
-        android:id="@+id/nav_profile"
-        android:icon="@drawable/ic_profile"
-        android:title="我的" />
+        android:id="@+id/nav_parking"
+        android:icon="@drawable/ic_parking"
+        android:title="车位" />
+
 </menu>

@@ -1,11 +1,13 @@
-package com.property.propertymanagement.activity
+package com.property.propertymanagement.fragment
 
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.property.propertymanagement.R
@@ -20,38 +22,33 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 
-class RepairActivity : AppCompatActivity() {
+class RepairFragment : Fragment() {
     private lateinit var rvRepairRecords: RecyclerView
     private lateinit var fabAdd: FloatingActionButton
     private lateinit var repairAdapter: RepairAdapter
     private var repairList = mutableListOf<com.property.propertymanagement.network.RepairResponse>()
     private lateinit var apiService: com.property.propertymanagement.network.ApiService
 
-    // 在 onCreate 方法中修改权限控制
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_repair) // 或 activity_complaint
-
-        apiService = RetrofitClient.createApiService(this)
-
-        initViews()
-        initRecyclerView()
-        loadRepairData() // 或 loadComplaintData()
-
-        // 修复：管理员和居民都可以看到添加按钮，但点击后的逻辑不同
-        fabAdd.visibility = View.VISIBLE
-
-        // 如果需要根据角色显示不同的提示，可以这样：
-        if (PermissionUtil.isAdmin(this)) {
-            fabAdd.contentDescription = "管理员添加记录"
-        } else {
-            fabAdd.contentDescription = "提交申请"
-        }
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        return inflater.inflate(R.layout.fragment_repair, container, false)
     }
 
-    private fun initViews() {
-        rvRepairRecords = findViewById(R.id.rv_repair_records)
-        fabAdd = findViewById(R.id.fab_add)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        apiService = RetrofitClient.createApiService(requireContext())
+
+        rvRepairRecords = view.findViewById(R.id.rv_repair_records)
+        fabAdd = view.findViewById(R.id.fab_add)
+
+        initRecyclerView()
+        loadRepairData()
+
+        fabAdd.visibility = View.VISIBLE
 
         fabAdd.setOnClickListener {
             showAddRepairDialog()
@@ -62,13 +59,13 @@ class RepairActivity : AppCompatActivity() {
         repairAdapter = RepairAdapter(repairList,
             onItemClick = { repair ->
                 // 管理员可以处理维修申请
-                if (PermissionUtil.isAdmin(this)) {
+                if (PermissionUtil.isAdmin(requireContext())) {
                     showUpdateRepairDialog(repair)
                 }
             },
             onItemLongClick = { repair ->
                 // 管理员可以删除维修记录
-                if (PermissionUtil.isAdmin(this)) {
+                if (PermissionUtil.isAdmin(requireContext())) {
                     showDeleteConfirmationDialog(repair.id)
                     true
                 } else {
@@ -77,12 +74,12 @@ class RepairActivity : AppCompatActivity() {
             }
         )
 
-        rvRepairRecords.layoutManager = LinearLayoutManager(this)
+        rvRepairRecords.layoutManager = LinearLayoutManager(requireContext())
         rvRepairRecords.adapter = repairAdapter
     }
 
-    private fun loadRepairData() {
-        if (PermissionUtil.isAdmin(this)) {
+    fun loadRepairData() {
+        if (PermissionUtil.isAdmin(requireContext())) {
             loadAllRepairs()
         } else {
             loadMyRepairs()
@@ -102,18 +99,18 @@ class RepairActivity : AppCompatActivity() {
                     repairAdapter.notifyDataSetChanged()
                     updateEmptyView()
                 } else {
-                    Toast.makeText(this@RepairActivity, "加载失败", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "加载失败", Toast.LENGTH_SHORT).show()
                 }
             }
 
             override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.RepairPageResponse>>, t: Throwable) {
-                Toast.makeText(this@RepairActivity, "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
     }
 
     private fun loadMyRepairs() {
-        apiService.getMyRepairs().enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.RepairPageResponse >> {
+        apiService.getMyRepairs().enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.RepairPageResponse>> {
             override fun onResponse(
                 call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.RepairPageResponse>>,
                 response: Response<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.RepairPageResponse>>
@@ -125,12 +122,12 @@ class RepairActivity : AppCompatActivity() {
                     repairAdapter.notifyDataSetChanged()
                     updateEmptyView()
                 } else {
-                    Toast.makeText(this@RepairActivity, "加载失败", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "加载失败", Toast.LENGTH_SHORT).show()
                 }
             }
 
             override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.RepairPageResponse>>, t: Throwable) {
-                Toast.makeText(this@RepairActivity, "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
     }
@@ -144,15 +141,15 @@ class RepairActivity : AppCompatActivity() {
         val etDescription = dialogView.findViewById<TextInputEditText>(R.id.et_description)
 
         // 如果是居民，自动填充房号和姓名
-        if (!PermissionUtil.isAdmin(this)) {
-            val houseNumber = PermissionUtil.getCurrentHouseNumber(this)
-            val residentName = PermissionUtil.getCurrentUserName(this)
+        if (!PermissionUtil.isAdmin(requireContext())) {
+            val houseNumber = PermissionUtil.getCurrentHouseNumber(requireContext())
+            val residentName = PermissionUtil.getCurrentUserName(requireContext())
             etHouseNumber.setText(houseNumber)
             etResidentName.setText(residentName)
-            etHouseNumber.isEnabled = false // 居民不能修改房号
+            etHouseNumber.isEnabled = false
         }
 
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(requireContext())
             .setTitle("提交维修申请")
             .setView(dialogView)
             .setPositiveButton("提交") { _, _ ->
@@ -178,19 +175,19 @@ class RepairActivity : AppCompatActivity() {
     ): Boolean {
         return when {
             houseNumber.isEmpty() -> {
-                Toast.makeText(this, "请输入房号", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "请输入房号", Toast.LENGTH_SHORT).show()
                 false
             }
             residentName.isEmpty() -> {
-                Toast.makeText(this, "请输入住户姓名", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "请输入住户姓名", Toast.LENGTH_SHORT).show()
                 false
             }
             phone.isEmpty() -> {
-                Toast.makeText(this, "请输入联系电话", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "请输入联系电话", Toast.LENGTH_SHORT).show()
                 false
             }
             type.isEmpty() -> {
-                Toast.makeText(this, "请输入维修类型", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "请输入维修类型", Toast.LENGTH_SHORT).show()
                 false
             }
             else -> true
@@ -198,9 +195,9 @@ class RepairActivity : AppCompatActivity() {
     }
 
     private fun submitRepair(houseNumber: String, residentName: String, phone: String, type: String, description: String) {
-        val userId = PermissionUtil.getCurrentUserId(this)
+        val userId = PermissionUtil.getCurrentUserId(requireContext())
         if (userId == 0L) {
-            Toast.makeText(this, "无法获取用户信息", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), "无法获取用户信息", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -212,16 +209,16 @@ class RepairActivity : AppCompatActivity() {
                 response: Response<com.property.propertymanagement.network.ApiResult<Void>>
             ) {
                 if (response.isSuccessful && response.body()?.code == 200) {
-                    Toast.makeText(this@RepairActivity, "提交成功", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "提交成功", Toast.LENGTH_SHORT).show()
                     loadRepairData()
                 } else {
                     val errorMsg = response.body()?.msg ?: "提交失败"
-                    Toast.makeText(this@RepairActivity, errorMsg, Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), errorMsg, Toast.LENGTH_SHORT).show()
                 }
             }
 
             override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<Void>>, t: Throwable) {
-                Toast.makeText(this@RepairActivity, "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
     }
@@ -231,10 +228,9 @@ class RepairActivity : AppCompatActivity() {
         val etStatus = dialogView.findViewById<TextInputEditText>(R.id.et_status)
         val etFeedback = dialogView.findViewById<TextInputEditText>(R.id.et_feedback)
 
-        // 设置默认值
         etStatus.setText(repair.status)
 
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(requireContext())
             .setTitle("更新维修状态")
             .setView(dialogView)
             .setPositiveButton("更新") { _, _ ->
@@ -244,7 +240,7 @@ class RepairActivity : AppCompatActivity() {
                 if (status.isNotEmpty()) {
                     updateRepair(repair.id, status, feedback)
                 } else {
-                    Toast.makeText(this, "请输入状态", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "请输入状态", Toast.LENGTH_SHORT).show()
                 }
             }
             .setNegativeButton("取消", null)
@@ -260,34 +256,33 @@ class RepairActivity : AppCompatActivity() {
                 response: Response<com.property.propertymanagement.network.ApiResult<Void>>
             ) {
                 if (response.isSuccessful && response.body()?.code == 200) {
-                    Toast.makeText(this@RepairActivity, "更新成功", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "更新成功", Toast.LENGTH_SHORT).show()
                     loadRepairData()
                 } else {
                     val errorMsg = response.body()?.msg ?: "更新失败"
-                    Toast.makeText(this@RepairActivity, errorMsg, Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), errorMsg, Toast.LENGTH_SHORT).show()
                 }
             }
 
             override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<Void>>, t: Throwable) {
-                Toast.makeText(this@RepairActivity, "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
     }
 
     private fun showDeleteConfirmationDialog(repairId: Long) {
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(requireContext())
             .setTitle("删除记录")
             .setMessage("确定要删除这条记录吗？")
             .setPositiveButton("删除") { _, _ ->
-                // 注意：后端可能没有提供删除维修的接口
-                Toast.makeText(this, "删除功能暂未实现", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "删除功能暂未实现", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("取消", null)
             .show()
     }
 
     private fun updateEmptyView() {
-        findViewById<TextView>(R.id.tv_empty).visibility =
-            if (repairList.isEmpty()) View.VISIBLE else View.GONE
+        val tvEmpty = view?.findViewById<TextView>(R.id.tv_empty)
+        tvEmpty?.visibility = if (repairList.isEmpty()) View.VISIBLE else View.GONE
     }
 }
