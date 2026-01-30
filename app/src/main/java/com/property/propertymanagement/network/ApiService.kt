@@ -192,6 +192,71 @@ interface ApiService {
     // 刷新Token
     @GET("api/auth/refresh")
     fun refreshToken(): Call<ApiResult<String>>
+
+    // 添加搜索接口
+    @GET("api/fee/admin/search")
+    fun searchFees(
+        @Query("keyword") keyword: String,
+        @Query("houseNumber") houseNumber: String,
+        @Query("pageNum") pageNum: Int = 1,
+        @Query("pageSize") pageSize: Int = 10
+    ): Call<ApiResult<FeePageResponse>>
+
+    @GET("api/repair/admin/search")
+    fun searchRepairs(
+        @Query("keyword") keyword: String,
+        @Query("houseNumber") houseNumber: String,
+        @Query("pageNum") pageNum: Int = 1,
+        @Query("pageSize") pageSize: Int = 10
+    ): Call<ApiResult<RepairPageResponse>>
+
+    @GET("api/complaint/admin/search")
+    fun searchComplaints(
+        @Query("keyword") keyword: String,
+        @Query("houseNumber") houseNumber: String,
+        @Query("pageNum") pageNum: Int = 1,
+        @Query("pageSize") pageSize: Int = 10
+    ): Call<ApiResult<ComplaintPageResponse>>
+
+    @GET("api/parking/admin/search")
+    fun searchParkings(
+        @Query("keyword") keyword: String,
+        @Query("houseNumber") houseNumber: String,
+        @Query("pageNum") pageNum: Int = 1,
+        @Query("pageSize") pageSize: Int = 10
+    ): Call<ApiResult<ParkingPageResponse>>
+
+    // 居民搜索接口
+    @GET("api/fee/my/search")
+    fun searchMyFees(
+        @Query("houseNumber") houseNumber: String,
+        @Query("keyword") keyword: String,
+        @Query("pageNum") pageNum: Int = 1,
+        @Query("pageSize") pageSize: Int = 10
+    ): Call<ApiResult<FeePageResponse>>
+
+    @GET("api/repair/my/search")
+    fun searchMyRepairs(
+        @Query("keyword") keyword: String,
+        @Query("pageNum") pageNum: Int = 1,
+        @Query("pageSize") pageSize: Int = 10
+    ): Call<ApiResult<RepairPageResponse>>
+
+    @GET("api/complaint/my/search")
+    fun searchMyComplaints(
+        @Query("houseNumber") houseNumber: String,
+        @Query("keyword") keyword: String,
+        @Query("pageNum") pageNum: Int = 1,
+        @Query("pageSize") pageSize: Int = 10
+    ): Call<ApiResult<ComplaintPageResponse>>
+
+    @GET("api/parking/my/search")
+    fun searchMyParkings(
+        @Query("houseNumber") houseNumber: String,
+        @Query("keyword") keyword: String,
+        @Query("pageNum") pageNum: Int = 1,
+        @Query("pageSize") pageSize: Int = 10
+    ): Call<ApiResult<ParkingPageResponse>>
 }
 
 

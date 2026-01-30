@@ -12,6 +12,7 @@
     <!-- 文字/图标色（前景色） -->
     <color name="on_primary">#FFFFFF</color>
     <color name="on_surface">#212121</color>
+    <color name="on_surface_variant">#757575</color>
     <!-- 分隔线色 -->
     <color name="divider">#E0E0E0</color>
 
@@ -39,4 +40,9 @@
     <color name="status_success">#4CAF50</color>
     <color name="status_warning">#FF9800</color>
     <color name="status_error">#F44336</color>
+
+    <color name="highlight">#FF4081</color>
+
+    <color name="green">#4CAF50</color>
+
 </resources>

@@ -1,10 +1,14 @@
-// FeeFragment.kt
+// 路径：com/property/propertymanagement/fragment/FeeFragment.kt
 package com.property.propertymanagement.fragment
 
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -27,8 +31,20 @@ class FeeFragment : Fragment() {
     private lateinit var rvFeeRecords: RecyclerView
     private lateinit var fabAdd: FloatingActionButton
     private lateinit var feeAdapter: FeeAdapter
+    private lateinit var etSearch: EditText
+    private lateinit var ivClearSearch: ImageView
+    private lateinit var tvEmpty: TextView
+
     private var feeList = mutableListOf<com.property.propertymanagement.network.FeeResponse>()
+    private var allFeeList = mutableListOf<com.property.propertymanagement.network.FeeResponse>() // 保存所有数据用于搜索
     private lateinit var apiService: com.property.propertymanagement.network.ApiService
+
+    private var currentPage = 1
+    private val pageSize = 20
+    private var isLoading = false
+    private var isLastPage = false
+    private var currentSearchKeyword = ""
+    private var currentHouseNumber = ""
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -44,19 +60,25 @@ class FeeFragment : Fragment() {
 
         initViews(view)
         initRecyclerView()
-        loadFeeData()
+        setupSearch()
+
+        loadFeeData(true) // 初次加载数据
 
         fabAdd.visibility = if (PermissionUtil.isAdmin(requireContext())) View.VISIBLE else View.GONE
     }
 
     override fun onResume() {
         super.onResume()
-        loadFeeData()
+        refreshData()
     }
 
     private fun initViews(view: View) {
         rvFeeRecords = view.findViewById(R.id.rv_fee_records)
         fabAdd = view.findViewById(R.id.fab_add)
+        etSearch = view.findViewById(R.id.et_search)
+        ivClearSearch = view.findViewById(R.id.iv_clear_search)
+        tvEmpty = view.findViewById(R.id.tv_empty)
+
         fabAdd.setOnClickListener { showAddFeeDialog() }
     }
 
@@ -80,11 +102,108 @@ class FeeFragment : Fragment() {
                 }
             }
         )
-        rvFeeRecords.layoutManager = LinearLayoutManager(requireContext())
+
+        val layoutManager = LinearLayoutManager(requireContext())
+        rvFeeRecords.layoutManager = layoutManager
         rvFeeRecords.adapter = feeAdapter
+
+        // 添加滚动监听实现分页加载
+        rvFeeRecords.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                super.onScrolled(recyclerView, dx, dy)
+
+                val visibleItemCount = layoutManager.childCount
+                val totalItemCount = layoutManager.itemCount
+                val firstVisibleItem = layoutManager.findFirstVisibleItemPosition()
+
+                if (!isLoading && !isLastPage) {
+                    if ((visibleItemCount + firstVisibleItem) >= totalItemCount
+                        && firstVisibleItem >= 0
+                        && totalItemCount >= pageSize) {
+
+                        currentPage++
+                        loadMoreData()
+                    }
+                }
+            }
+        })
     }
 
-    fun loadFeeData() {
+    private fun setupSearch() {
+        // 搜索框文本变化监听
+        etSearch.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                ivClearSearch.visibility = if (s.isNullOrEmpty()) View.GONE else View.VISIBLE
+            }
+
+            override fun afterTextChanged(s: Editable?) {
+                currentSearchKeyword = s.toString().trim()
+                if (currentSearchKeyword.isEmpty()) {
+                    // 清空搜索，显示所有数据
+                    feeList.clear()
+                    feeList.addAll(allFeeList)
+                    feeAdapter.notifyDataSetChanged()
+                    updateEmptyView()
+                } else {
+                    // 执行搜索
+                    performSearch(currentSearchKeyword)
+                }
+            }
+        })
+
+        // 清空搜索按钮点击
+        ivClearSearch.setOnClickListener {
+            etSearch.setText("")
+            currentSearchKeyword = ""
+            feeList.clear()
+            feeList.addAll(allFeeList)
+            feeAdapter.notifyDataSetChanged()
+            updateEmptyView()
+        }
+
+        // 搜索按钮点击（软键盘上的搜索键）
+        etSearch.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) {
+                performSearch(currentSearchKeyword)
+                true
+            } else {
+                false
+            }
+        }
+    }
+
+    private fun performSearch(keyword: String) {
+        if (keyword.isEmpty()) return
+
+        if (PermissionUtil.isAdmin(requireContext())) {
+            searchAllFees(keyword)
+        } else {
+            searchMyFees(keyword)
+        }
+    }
+
+    fun loadFeeData(isRefresh: Boolean = false) {
+        if (isRefresh) {
+            currentPage = 1
+            isLastPage = false
+            feeList.clear()
+            feeAdapter.notifyDataSetChanged()
+        }
+
+        isLoading = true
+        if (PermissionUtil.isAdmin(requireContext())) {
+            loadAllFees()
+        } else {
+            loadMyFees()
+        }
+    }
+
+    private fun loadMoreData() {
+        if (isLoading || isLastPage) return
+
+        isLoading = true
         if (PermissionUtil.isAdmin(requireContext())) {
             loadAllFees()
         } else {
@@ -93,16 +212,31 @@ class FeeFragment : Fragment() {
     }
 
     private fun loadAllFees() {
-        apiService.getAllFees().enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.FeePageResponse>> {
+        if (currentSearchKeyword.isNotEmpty()) {
+            searchAllFees(currentSearchKeyword)
+            return
+        }
+
+        apiService.getAllFees(currentPage, pageSize).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.FeePageResponse>> {
             override fun onResponse(
                 call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.FeePageResponse>>,
                 response: Response<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.FeePageResponse>>
             ) {
+                isLoading = false
                 if (response.isSuccessful && response.body()?.code == 200) {
                     val data = response.body()?.data?.records ?: emptyList()
-                    feeList.clear()
+                    val totalPages = response.body()?.data?.pages ?: 0
+
+                    if (currentPage == 1) {
+                        allFeeList.clear()
+                        feeList.clear()
+                        allFeeList.addAll(data)
+                    }
+
                     feeList.addAll(data)
                     feeAdapter.notifyDataSetChanged()
+
+                    isLastPage = currentPage >= totalPages
                     updateEmptyView()
                 } else {
                     Toast.makeText(requireContext(), "加载失败", Toast.LENGTH_SHORT).show()
@@ -110,6 +244,7 @@ class FeeFragment : Fragment() {
             }
 
             override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.FeePageResponse>>, t: Throwable) {
+                isLoading = false
                 Toast.makeText(requireContext(), "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
@@ -119,19 +254,35 @@ class FeeFragment : Fragment() {
         val houseNumber = PermissionUtil.getCurrentHouseNumber(requireContext())
         if (houseNumber.isNullOrEmpty()) {
             Toast.makeText(requireContext(), "无法获取房号信息", Toast.LENGTH_SHORT).show()
+            isLoading = false
             return
         }
 
-        apiService.getMyFees(houseNumber).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.FeePageResponse>> {
+        if (currentSearchKeyword.isNotEmpty()) {
+            searchMyFees(currentSearchKeyword)
+            return
+        }
+
+        apiService.getMyFees(houseNumber, currentPage, pageSize).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.FeePageResponse>> {
             override fun onResponse(
                 call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.FeePageResponse>>,
                 response: Response<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.FeePageResponse>>
             ) {
+                isLoading = false
                 if (response.isSuccessful && response.body()?.code == 200) {
                     val data = response.body()?.data?.records ?: emptyList()
-                    feeList.clear()
+                    val totalPages = response.body()?.data?.pages ?: 0
+
+                    if (currentPage == 1) {
+                        allFeeList.clear()
+                        feeList.clear()
+                        allFeeList.addAll(data)
+                    }
+
                     feeList.addAll(data)
                     feeAdapter.notifyDataSetChanged()
+
+                    isLastPage = currentPage >= totalPages
                     updateEmptyView()
                 } else {
                     Toast.makeText(requireContext(), "加载失败", Toast.LENGTH_SHORT).show()
@@ -139,6 +290,78 @@ class FeeFragment : Fragment() {
             }
 
             override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.FeePageResponse>>, t: Throwable) {
+                isLoading = false
+                Toast.makeText(requireContext(), "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
+            }
+        })
+    }
+
+    private fun searchAllFees(keyword: String) {
+        apiService.searchFees(keyword, keyword, currentPage, pageSize).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.FeePageResponse>> {
+            override fun onResponse(
+                call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.FeePageResponse>>,
+                response: Response<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.FeePageResponse>>
+            ) {
+                isLoading = false
+                if (response.isSuccessful && response.body()?.code == 200) {
+                    val data = response.body()?.data?.records ?: emptyList()
+                    val totalPages = response.body()?.data?.pages ?: 0
+
+                    if (currentPage == 1) {
+                        feeList.clear()
+                    }
+
+                    feeList.addAll(data)
+                    feeAdapter.notifyDataSetChanged()
+
+                    isLastPage = currentPage >= totalPages
+                    updateEmptyView()
+                } else {
+                    Toast.makeText(requireContext(), "搜索失败", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.FeePageResponse>>, t: Throwable) {
+                isLoading = false
+                Toast.makeText(requireContext(), "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
+            }
+        })
+    }
+
+    private fun searchMyFees(keyword: String) {
+        val houseNumber = PermissionUtil.getCurrentHouseNumber(requireContext())
+        if (houseNumber.isNullOrEmpty()) {
+            Toast.makeText(requireContext(), "无法获取房号信息", Toast.LENGTH_SHORT).show()
+            isLoading = false
+            return
+        }
+
+        apiService.searchMyFees(houseNumber, keyword, currentPage, pageSize).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.FeePageResponse>> {
+            override fun onResponse(
+                call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.FeePageResponse>>,
+                response: Response<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.FeePageResponse>>
+            ) {
+                isLoading = false
+                if (response.isSuccessful && response.body()?.code == 200) {
+                    val data = response.body()?.data?.records ?: emptyList()
+                    val totalPages = response.body()?.data?.pages ?: 0
+
+                    if (currentPage == 1) {
+                        feeList.clear()
+                    }
+
+                    feeList.addAll(data)
+                    feeAdapter.notifyDataSetChanged()
+
+                    isLastPage = currentPage >= totalPages
+                    updateEmptyView()
+                } else {
+                    Toast.makeText(requireContext(), "搜索失败", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.FeePageResponse>>, t: Throwable) {
+                isLoading = false
                 Toast.makeText(requireContext(), "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
@@ -201,7 +424,7 @@ class FeeFragment : Fragment() {
             ) {
                 if (response.isSuccessful && response.body()?.code == 200) {
                     Toast.makeText(requireContext(), "添加成功", Toast.LENGTH_SHORT).show()
-                    loadFeeData()
+                    refreshData()
                 } else {
                     Toast.makeText(requireContext(), "添加失败", Toast.LENGTH_SHORT).show()
                 }
@@ -267,7 +490,7 @@ class FeeFragment : Fragment() {
                 ) {
                     if (response.isSuccessful && response.body()?.code == 200) {
                         Toast.makeText(requireContext(), "缴纳成功", Toast.LENGTH_SHORT).show()
-                        loadFeeData()
+                        refreshData()
                     } else {
                         Toast.makeText(requireContext(), "缴纳失败", Toast.LENGTH_SHORT).show()
                     }
@@ -291,7 +514,21 @@ class FeeFragment : Fragment() {
     }
 
     private fun updateEmptyView() {
-        view?.findViewById<TextView>(R.id.tv_empty)?.visibility =
-            if (feeList.isEmpty()) View.VISIBLE else View.GONE
+        if (feeList.isEmpty()) {
+            if (currentSearchKeyword.isNotEmpty()) {
+                tvEmpty.text = "未找到相关结果\n请尝试其他关键词"
+            } else {
+                tvEmpty.text = "暂无物业费记录\n点击下方按钮添加"
+            }
+            tvEmpty.visibility = View.VISIBLE
+        } else {
+            tvEmpty.visibility = View.GONE
+        }
+    }
+
+    private fun refreshData() {
+        etSearch.setText("")
+        currentSearchKeyword = ""
+        loadFeeData(true)
     }
 }

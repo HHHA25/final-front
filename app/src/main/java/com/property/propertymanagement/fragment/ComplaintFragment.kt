@@ -1,10 +1,13 @@
-// ComplaintFragment.kt
 package com.property.propertymanagement.fragment
 
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -27,8 +30,19 @@ class ComplaintFragment : Fragment() {
     private lateinit var rvComplaintRecords: RecyclerView
     private lateinit var fabAdd: FloatingActionButton
     private lateinit var complaintAdapter: ComplaintAdapter
+    private lateinit var etSearch: EditText
+    private lateinit var ivClearSearch: ImageView
+    private lateinit var tvEmpty: TextView
+
     private var complaintList = mutableListOf<com.property.propertymanagement.network.ComplaintResponse>()
+    private var allComplaintList = mutableListOf<com.property.propertymanagement.network.ComplaintResponse>()
     private lateinit var apiService: com.property.propertymanagement.network.ApiService
+
+    private var currentPage = 1
+    private val pageSize = 20
+    private var isLoading = false
+    private var isLastPage = false
+    private var currentSearchKeyword = ""
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -44,19 +58,25 @@ class ComplaintFragment : Fragment() {
 
         initViews(view)
         initRecyclerView()
-        loadComplaintData()
+        setupSearch()
+
+        loadComplaintData(true)
 
         fabAdd.visibility = View.VISIBLE
     }
 
     override fun onResume() {
         super.onResume()
-        loadComplaintData()
+        refreshData()
     }
 
     private fun initViews(view: View) {
         rvComplaintRecords = view.findViewById(R.id.rv_complaint_records)
         fabAdd = view.findViewById(R.id.fab_add)
+        etSearch = view.findViewById(R.id.et_search)
+        ivClearSearch = view.findViewById(R.id.iv_clear_search)
+        tvEmpty = view.findViewById(R.id.tv_empty)
+
         fabAdd.setOnClickListener { showAddComplaintDialog() }
     }
 
@@ -76,11 +96,108 @@ class ComplaintFragment : Fragment() {
                 }
             }
         )
-        rvComplaintRecords.layoutManager = LinearLayoutManager(requireContext())
+
+        val layoutManager = LinearLayoutManager(requireContext())
+        rvComplaintRecords.layoutManager = layoutManager
         rvComplaintRecords.adapter = complaintAdapter
+
+        // 添加滚动监听实现分页加载
+        rvComplaintRecords.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                super.onScrolled(recyclerView, dx, dy)
+
+                val visibleItemCount = layoutManager.childCount
+                val totalItemCount = layoutManager.itemCount
+                val firstVisibleItem = layoutManager.findFirstVisibleItemPosition()
+
+                if (!isLoading && !isLastPage) {
+                    if ((visibleItemCount + firstVisibleItem) >= totalItemCount
+                        && firstVisibleItem >= 0
+                        && totalItemCount >= pageSize) {
+
+                        currentPage++
+                        loadMoreData()
+                    }
+                }
+            }
+        })
     }
 
-    fun loadComplaintData() {
+    private fun setupSearch() {
+        // 搜索框文本变化监听
+        etSearch.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                ivClearSearch.visibility = if (s.isNullOrEmpty()) View.GONE else View.VISIBLE
+            }
+
+            override fun afterTextChanged(s: Editable?) {
+                currentSearchKeyword = s.toString().trim()
+                if (currentSearchKeyword.isEmpty()) {
+                    // 清空搜索，显示所有数据
+                    complaintList.clear()
+                    complaintList.addAll(allComplaintList)
+                    complaintAdapter.notifyDataSetChanged()
+                    updateEmptyView()
+                } else {
+                    // 执行搜索
+                    performSearch(currentSearchKeyword)
+                }
+            }
+        })
+
+        // 清空搜索按钮点击
+        ivClearSearch.setOnClickListener {
+            etSearch.setText("")
+            currentSearchKeyword = ""
+            complaintList.clear()
+            complaintList.addAll(allComplaintList)
+            complaintAdapter.notifyDataSetChanged()
+            updateEmptyView()
+        }
+
+        // 搜索按钮点击（软键盘上的搜索键）
+        etSearch.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) {
+                performSearch(currentSearchKeyword)
+                true
+            } else {
+                false
+            }
+        }
+    }
+
+    private fun performSearch(keyword: String) {
+        if (keyword.isEmpty()) return
+
+        if (PermissionUtil.isAdmin(requireContext())) {
+            searchAllComplaints(keyword)
+        } else {
+            searchMyComplaints(keyword)
+        }
+    }
+
+    fun loadComplaintData(isRefresh: Boolean = false) {
+        if (isRefresh) {
+            currentPage = 1
+            isLastPage = false
+            complaintList.clear()
+            complaintAdapter.notifyDataSetChanged()
+        }
+
+        isLoading = true
+        if (PermissionUtil.isAdmin(requireContext())) {
+            loadAllComplaints()
+        } else {
+            loadMyComplaints()
+        }
+    }
+
+    private fun loadMoreData() {
+        if (isLoading || isLastPage) return
+
+        isLoading = true
         if (PermissionUtil.isAdmin(requireContext())) {
             loadAllComplaints()
         } else {
@@ -89,16 +206,31 @@ class ComplaintFragment : Fragment() {
     }
 
     private fun loadAllComplaints() {
-        apiService.getAllComplaints().enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ComplaintPageResponse>> {
+        if (currentSearchKeyword.isNotEmpty()) {
+            searchAllComplaints(currentSearchKeyword)
+            return
+        }
+
+        apiService.getAllComplaints(currentPage, pageSize).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ComplaintPageResponse>> {
             override fun onResponse(
                 call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ComplaintPageResponse>>,
                 response: Response<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ComplaintPageResponse>>
             ) {
+                isLoading = false
                 if (response.isSuccessful && response.body()?.code == 200) {
                     val data = response.body()?.data?.records ?: emptyList()
-                    complaintList.clear()
+                    val totalPages = response.body()?.data?.pages ?: 0
+
+                    if (currentPage == 1) {
+                        allComplaintList.clear()
+                        complaintList.clear()
+                        allComplaintList.addAll(data)
+                    }
+
                     complaintList.addAll(data)
                     complaintAdapter.notifyDataSetChanged()
+
+                    isLastPage = currentPage >= totalPages
                     updateEmptyView()
                 } else {
                     Toast.makeText(requireContext(), "加载失败", Toast.LENGTH_SHORT).show()
@@ -106,6 +238,7 @@ class ComplaintFragment : Fragment() {
             }
 
             override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ComplaintPageResponse>>, t: Throwable) {
+                isLoading = false
                 Toast.makeText(requireContext(), "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
@@ -115,19 +248,35 @@ class ComplaintFragment : Fragment() {
         val houseNumber = PermissionUtil.getCurrentHouseNumber(requireContext())
         if (houseNumber.isNullOrEmpty()) {
             Toast.makeText(requireContext(), "无法获取房号信息", Toast.LENGTH_SHORT).show()
+            isLoading = false
             return
         }
 
-        apiService.getMyComplaints(houseNumber).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ComplaintPageResponse>> {
+        if (currentSearchKeyword.isNotEmpty()) {
+            searchMyComplaints(currentSearchKeyword)
+            return
+        }
+
+        apiService.getMyComplaints(houseNumber, currentPage, pageSize).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ComplaintPageResponse>> {
             override fun onResponse(
                 call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ComplaintPageResponse>>,
                 response: Response<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ComplaintPageResponse>>
             ) {
+                isLoading = false
                 if (response.isSuccessful && response.body()?.code == 200) {
                     val data = response.body()?.data?.records ?: emptyList()
-                    complaintList.clear()
+                    val totalPages = response.body()?.data?.pages ?: 0
+
+                    if (currentPage == 1) {
+                        allComplaintList.clear()
+                        complaintList.clear()
+                        allComplaintList.addAll(data)
+                    }
+
                     complaintList.addAll(data)
                     complaintAdapter.notifyDataSetChanged()
+
+                    isLastPage = currentPage >= totalPages
                     updateEmptyView()
                 } else {
                     Toast.makeText(requireContext(), "加载失败", Toast.LENGTH_SHORT).show()
@@ -135,6 +284,78 @@ class ComplaintFragment : Fragment() {
             }
 
             override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ComplaintPageResponse>>, t: Throwable) {
+                isLoading = false
+                Toast.makeText(requireContext(), "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
+            }
+        })
+    }
+
+    private fun searchAllComplaints(keyword: String) {
+        apiService.searchComplaints(keyword, keyword, currentPage, pageSize).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ComplaintPageResponse>> {
+            override fun onResponse(
+                call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ComplaintPageResponse>>,
+                response: Response<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ComplaintPageResponse>>
+            ) {
+                isLoading = false
+                if (response.isSuccessful && response.body()?.code == 200) {
+                    val data = response.body()?.data?.records ?: emptyList()
+                    val totalPages = response.body()?.data?.pages ?: 0
+
+                    if (currentPage == 1) {
+                        complaintList.clear()
+                    }
+
+                    complaintList.addAll(data)
+                    complaintAdapter.notifyDataSetChanged()
+
+                    isLastPage = currentPage >= totalPages
+                    updateEmptyView()
+                } else {
+                    Toast.makeText(requireContext(), "搜索失败", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ComplaintPageResponse>>, t: Throwable) {
+                isLoading = false
+                Toast.makeText(requireContext(), "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
+            }
+        })
+    }
+
+    private fun searchMyComplaints(keyword: String) {
+        val houseNumber = PermissionUtil.getCurrentHouseNumber(requireContext())
+        if (houseNumber.isNullOrEmpty()) {
+            Toast.makeText(requireContext(), "无法获取房号信息", Toast.LENGTH_SHORT).show()
+            isLoading = false
+            return
+        }
+
+        apiService.searchMyComplaints(houseNumber, keyword, currentPage, pageSize).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ComplaintPageResponse>> {
+            override fun onResponse(
+                call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ComplaintPageResponse>>,
+                response: Response<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ComplaintPageResponse>>
+            ) {
+                isLoading = false
+                if (response.isSuccessful && response.body()?.code == 200) {
+                    val data = response.body()?.data?.records ?: emptyList()
+                    val totalPages = response.body()?.data?.pages ?: 0
+
+                    if (currentPage == 1) {
+                        complaintList.clear()
+                    }
+
+                    complaintList.addAll(data)
+                    complaintAdapter.notifyDataSetChanged()
+
+                    isLastPage = currentPage >= totalPages
+                    updateEmptyView()
+                } else {
+                    Toast.makeText(requireContext(), "搜索失败", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ComplaintPageResponse>>, t: Throwable) {
+                isLoading = false
                 Toast.makeText(requireContext(), "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
@@ -216,7 +437,7 @@ class ComplaintFragment : Fragment() {
             ) {
                 if (response.isSuccessful && response.body()?.code == 200) {
                     Toast.makeText(requireContext(), "提交成功", Toast.LENGTH_SHORT).show()
-                    loadComplaintData()
+                    refreshData()
                 } else {
                     val errorMsg = response.body()?.msg ?: "提交失败"
                     Toast.makeText(requireContext(), errorMsg, Toast.LENGTH_SHORT).show()
@@ -264,7 +485,7 @@ class ComplaintFragment : Fragment() {
             ) {
                 if (response.isSuccessful && response.body()?.code == 200) {
                     Toast.makeText(requireContext(), "更新成功", Toast.LENGTH_SHORT).show()
-                    loadComplaintData()
+                    refreshData()
                 } else {
                     val errorMsg = response.body()?.msg ?: "更新失败"
                     Toast.makeText(requireContext(), errorMsg, Toast.LENGTH_SHORT).show()
@@ -289,7 +510,21 @@ class ComplaintFragment : Fragment() {
     }
 
     private fun updateEmptyView() {
-        view?.findViewById<TextView>(R.id.tv_empty)?.visibility =
-            if (complaintList.isEmpty()) View.VISIBLE else View.GONE
+        if (complaintList.isEmpty()) {
+            if (currentSearchKeyword.isNotEmpty()) {
+                tvEmpty.text = "未找到相关结果\n请尝试其他关键词"
+            } else {
+                tvEmpty.text = "暂无投诉记录\n点击下方按钮添加"
+            }
+            tvEmpty.visibility = View.VISIBLE
+        } else {
+            tvEmpty.visibility = View.GONE
+        }
+    }
+
+    private fun refreshData() {
+        etSearch.setText("")
+        currentSearchKeyword = ""
+        loadComplaintData(true)
     }
 }
