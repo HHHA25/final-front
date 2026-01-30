@@ -188,6 +188,10 @@ interface ApiService {
     // 直接创建用户（管理员）
     @POST("api/user/admin/create")
     fun createUser(@Body request: UserCreateRequest): Call<ApiResult<Void>>
+
+    // 刷新Token
+    @GET("api/auth/refresh")
+    fun refreshToken(): Call<ApiResult<String>>
 }
 
 

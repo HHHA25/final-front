@@ -27,14 +27,14 @@ object PermissionUtil {
             .putBoolean(KEY_IS_LOGGED_IN, true)
             .apply()
     }
-    // 检查Token是否过期（7天）
+    // 检查Token是否过期（5天）
     fun isTokenExpired(context: Context): Boolean {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         val loginTime = prefs.getLong(KEY_LOGIN_TIME, 0L)
         if (loginTime == 0L) return true
 
         val currentTime = System.currentTimeMillis()
-        val sevenDaysInMillis = 7 * 24 * 60 * 60 * 1000L
+        val sevenDaysInMillis = 5 * 24 * 60 * 60 * 1000L
 
         return (currentTime - loginTime) > sevenDaysInMillis
     }
@@ -46,7 +46,7 @@ object PermissionUtil {
         if (loginTime == 0L) return 0L
 
         val currentTime = System.currentTimeMillis()
-        val sevenDaysInMillis = 7 * 24 * 60 * 60 * 1000L
+        val sevenDaysInMillis = 5 * 24 * 60 * 60 * 1000L
 
         return (loginTime + sevenDaysInMillis) - currentTime
     }

@@ -3,6 +3,7 @@ package com.property.propertymanagement.activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.property.propertymanagement.R
@@ -117,9 +118,11 @@ class LoginActivity : AppCompatActivity() {
         with(sharedPref.edit()) {
             putString("username", username)
             putString("token", token)
+            putLong("login_time", System.currentTimeMillis()) // 保存登录时间
             putBoolean("is_logged_in", true)
             apply()
         }
+        Log.d("LoginActivity", "保存登录信息，登录时间: ${System.currentTimeMillis()}")
     }
 
     private fun checkLoginStatus() {

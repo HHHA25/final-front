@@ -25,6 +25,9 @@ class MainActivity : AppCompatActivity() {
 
         // 默认显示物业费页面
         showFragment(FeeFragment(), "fee")
+
+        // 检查 Token 是否即将过期
+        checkTokenValidity()
     }
 
     override fun onResume() {
@@ -97,6 +100,18 @@ class MainActivity : AppCompatActivity() {
         if (!isMessageShown()) {
             Toast.makeText(this, "欢迎回来，$username ($roleText)", Toast.LENGTH_SHORT).show()
             setMessageShown()
+        }
+    }
+
+    private fun checkTokenValidity() {
+        if (PermissionUtil.isTokenExpired(this)) {
+            // Token已过期，跳转到登录页面
+            Toast.makeText(this, "登录已过期，请重新登录", Toast.LENGTH_SHORT).show()
+            PermissionUtil.clearAllUserData(this)
+            val intent = Intent(this, com.property.propertymanagement.activity.LoginActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
+            finish()
         }
     }
 

@@ -78,7 +78,7 @@ class ProfileFragment : Fragment() {
         val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
         tvLoginTime.text = "登录时间: ${dateFormat.format(Date(loginTime))}"
 
-        val expireTime = loginTime + 7 * 24 * 60 * 60 * 1000
+        val expireTime = loginTime + 5 * 24 * 60 * 60 * 1000
         tvTokenExpire.text = "Token过期: ${dateFormat.format(Date(expireTime))}"
     }
 
