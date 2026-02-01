@@ -2,6 +2,7 @@
 // 修改UserManagementActivity，实现直接添加用户
 package com.property.propertymanagement.activity
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
@@ -33,6 +34,8 @@ class UserManagementActivity : AppCompatActivity() {
     private lateinit var apiService: com.property.propertymanagement.network.ApiService
     private var userList = mutableListOf<com.property.propertymanagement.network.UserResponse>()
 
+    private var pendingCount = 0
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_user_management)
@@ -55,10 +58,59 @@ class UserManagementActivity : AppCompatActivity() {
         initRecyclerView()
         loadUserData()
 
+        loadPendingCount()
+
         fabAdd.setOnClickListener {
             showAddUserDialog()
         }
     }
+
+    private fun loadPendingCount() {
+        apiService.getPendingCount().enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<Int>> {
+            override fun onResponse(
+                call: Call<com.property.propertymanagement.network.ApiResult<Int>>,
+                response: Response<com.property.propertymanagement.network.ApiResult<Int>>
+            ) {
+                if (response.isSuccessful && response.body()?.code == 200) {
+                    pendingCount = response.body()?.data ?: 0
+                    invalidateOptionsMenu()  // 刷新菜单显示角标
+                }
+            }
+
+            override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<Int>>, t: Throwable) {
+                // 失败时角标显示0
+                pendingCount = 0
+                invalidateOptionsMenu()
+            }
+        })
+    }
+
+    // 加载菜单时添加角标
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.user_management_menu, menu)
+
+        // 为审批菜单项添加角标
+        val approvalItem = menu?.findItem(R.id.action_approval)
+        if (approvalItem != null && pendingCount > 0) {
+            // 创建自定义视图显示角标
+            val actionView = layoutInflater.inflate(R.layout.menu_item_with_badge, null)
+            val tvBadge = actionView.findViewById<TextView>(R.id.tv_badge)
+
+            // 设置角标文本
+            tvBadge.text = if (pendingCount > 99) "99+" else pendingCount.toString()
+            tvBadge.visibility = View.VISIBLE
+
+            // 设置点击事件
+            actionView.setOnClickListener {
+                onOptionsItemSelected(approvalItem)
+            }
+
+            approvalItem.actionView = actionView
+        }
+
+        return true
+    }
+
 
     private fun initRecyclerView() {
         rvUsers.layoutManager = LinearLayoutManager(this)
@@ -280,10 +332,17 @@ class UserManagementActivity : AppCompatActivity() {
         override fun getItemCount() = users.size
     }
 
-    // 加载菜单
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.user_management_menu, menu)
-        return true
+
+    private fun updateEmptyView() {
+        findViewById<TextView>(R.id.tv_empty).visibility =
+            if (userList.isEmpty()) View.VISIBLE else View.GONE
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 每次返回页面时刷新数据
+        loadUserData()
+        loadPendingCount()  // 刷新待审批数量
     }
 
     // 处理菜单点击事件
@@ -295,15 +354,11 @@ class UserManagementActivity : AppCompatActivity() {
             }
             R.id.action_approval -> {
                 // 跳转到注册审批页面
-                startActivity(android.content.Intent(this, RegistrationApprovalActivity::class.java))
+                val intent = Intent(this, RegistrationApprovalActivity::class.java)
+                startActivity(intent)
                 true
             }
             else -> super.onOptionsItemSelected(item)
         }
-    }
-
-    private fun updateEmptyView() {
-        findViewById<TextView>(R.id.tv_empty).visibility =
-            if (userList.isEmpty()) View.VISIBLE else View.GONE
     }
 }

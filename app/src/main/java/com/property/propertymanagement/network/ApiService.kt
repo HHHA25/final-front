@@ -257,6 +257,9 @@ interface ApiService {
         @Query("pageNum") pageNum: Int = 1,
         @Query("pageSize") pageSize: Int = 10
     ): Call<ApiResult<ParkingPageResponse>>
+
+    @GET("api/registration/admin/processed")
+    fun getProcessedRegistrations(): Call<ApiResult<List<RegistrationResponse>>>
 }
 
 

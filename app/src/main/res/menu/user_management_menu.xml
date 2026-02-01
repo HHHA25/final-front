@@ -2,10 +2,11 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
+    <!-- 审批注册菜单项 -->
     <item
         android:id="@+id/action_approval"
         android:icon="@android:drawable/ic_menu_manage"
         android:title="审批注册"
-        app:showAsAction="ifRoom" />
+        app:showAsAction="ifRoom|withText" />  <!-- 改为带文本显示 -->
 
 </menu>

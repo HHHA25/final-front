@@ -23,6 +23,11 @@ class RegistrationRequestAdapter(
         val tvStatus: TextView = itemView.findViewById(R.id.tv_status)
         val btnApprove: Button = itemView.findViewById(R.id.btn_approve)
         val btnReject: Button = itemView.findViewById(R.id.btn_reject)
+
+        // 状态显示的不同颜色
+        init {
+            tvStatus.setBackgroundResource(R.drawable.status_bg)
+        }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -37,21 +42,35 @@ class RegistrationRequestAdapter(
         holder.tvHouseNumber.text = "房号: ${request.houseNumber}"
         holder.tvSubmitTime.text = "提交时间: ${request.submitTime}"
 
-        holder.tvStatus.text = when (request.status) {
-            RequestStatus.PENDING -> "状态: 待审批"
-            RequestStatus.APPROVED -> "状态: 已批准"
-            RequestStatus.REJECTED -> "状态: 已拒绝"
+        // 根据状态设置不同的显示文本和颜色
+        when (request.status) {
+            RequestStatus.PENDING -> {
+                holder.tvStatus.text = "待审批"
+                holder.tvStatus.setBackgroundResource(R.drawable.status_pending_bg)
+                holder.btnApprove.visibility = View.VISIBLE
+                holder.btnReject.visibility = View.VISIBLE
+            }
+            RequestStatus.APPROVED -> {
+                holder.tvStatus.text = "已批准"
+                holder.tvStatus.setBackgroundResource(R.drawable.status_success_bg)
+                holder.btnApprove.visibility = View.GONE
+                holder.btnReject.visibility = View.GONE
+            }
+            RequestStatus.REJECTED -> {
+                holder.tvStatus.text = "已拒绝"
+                holder.tvStatus.setBackgroundResource(R.drawable.status_rejected_bg)
+                holder.btnApprove.visibility = View.GONE
+                holder.btnReject.visibility = View.GONE
+            }
         }
 
-        // 只有待审批的请求才显示操作按钮
+        // 设置按钮点击事件（只在待审批状态显示）
         if (request.status == RequestStatus.PENDING) {
-            holder.btnApprove.visibility = View.VISIBLE
-            holder.btnReject.visibility = View.VISIBLE
             holder.btnApprove.setOnClickListener { onApproveClick(request) }
             holder.btnReject.setOnClickListener { onRejectClick(request) }
         } else {
-            holder.btnApprove.visibility = View.GONE
-            holder.btnReject.visibility = View.GONE
+            holder.btnApprove.setOnClickListener(null)
+            holder.btnReject.setOnClickListener(null)
         }
     }
 
