@@ -284,7 +284,11 @@ class RepairFragment : Fragment() {
     }
 
     private fun searchAllRepairs(keyword: String) {
-        apiService.searchRepairs(keyword, keyword, currentPage, pageSize).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.RepairPageResponse>> {
+        apiService.searchRepairs(
+            keyword = keyword,
+            houseNumber = "",
+            currentPage, pageSize
+        ).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.RepairPageResponse>> {
             override fun onResponse(
                 call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.RepairPageResponse>>,
                 response: Response<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.RepairPageResponse>>

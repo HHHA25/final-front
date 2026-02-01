@@ -297,7 +297,11 @@ class FeeFragment : Fragment() {
     }
 
     private fun searchAllFees(keyword: String) {
-        apiService.searchFees(keyword, keyword, currentPage, pageSize).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.FeePageResponse>> {
+        apiService.searchFees(
+            keyword = keyword,
+            houseNumber = "",
+            currentPage, pageSize
+        ).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.FeePageResponse>> {
             override fun onResponse(
                 call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.FeePageResponse>>,
                 response: Response<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.FeePageResponse>>

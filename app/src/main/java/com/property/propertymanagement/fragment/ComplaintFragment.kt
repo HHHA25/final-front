@@ -291,7 +291,11 @@ class ComplaintFragment : Fragment() {
     }
 
     private fun searchAllComplaints(keyword: String) {
-        apiService.searchComplaints(keyword, keyword, currentPage, pageSize).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ComplaintPageResponse>> {
+        apiService.searchComplaints(
+            keyword = keyword,
+            houseNumber = "",
+            currentPage, pageSize
+        ).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ComplaintPageResponse>> {
             override fun onResponse(
                 call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ComplaintPageResponse>>,
                 response: Response<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ComplaintPageResponse>>

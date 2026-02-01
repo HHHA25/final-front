@@ -291,7 +291,11 @@ class ParkingFragment : Fragment() {
     }
 
     private fun searchAllParkings(keyword: String) {
-        apiService.searchParkings(keyword, keyword, currentPage, pageSize).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ParkingPageResponse>> {
+        apiService.searchParkings(
+            keyword = keyword,
+            houseNumber = "",
+            currentPage, pageSize
+        ).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ParkingPageResponse>> {
             override fun onResponse(
                 call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ParkingPageResponse>>,
                 response: Response<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.ParkingPageResponse>>
