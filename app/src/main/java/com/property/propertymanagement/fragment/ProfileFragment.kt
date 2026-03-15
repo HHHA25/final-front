@@ -114,7 +114,6 @@ class ProfileFragment : Fragment() {
             items.add(ProfileItem("房屋管理", "管理房屋信息", R.drawable.ic_house))
         }
 
-        items.add(ProfileItem("系统设置", "应用设置和关于", R.drawable.ic_settings))
         items.add(ProfileItem("关于我们", "关于物业管理系统", R.drawable.ic_about))
 
         rvProfileItems.layoutManager = LinearLayoutManager(requireContext())
@@ -133,9 +132,6 @@ class ProfileFragment : Fragment() {
             }
             "房屋管理" -> {
                 startActivity(Intent(requireContext(), HouseManagementActivity::class.java))
-            }
-            "系统设置" -> {
-                Toast.makeText(requireContext(), "打开系统设置", Toast.LENGTH_SHORT).show()
             }
             "关于我们" -> {
                 showAboutDialog()

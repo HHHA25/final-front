@@ -453,7 +453,7 @@ class FeeFragment : Fragment() {
         etMonth.setText(fee.month)
 
         AlertDialog.Builder(requireContext())
-            .setTitle("编辑物业费")
+            .setTitle("编辑物业费（请谨慎修改）")
             .setView(dialogView)
             .setPositiveButton("更新") { _, _ ->
                 val houseNumber = etHouseNumber.text.toString().trim()
