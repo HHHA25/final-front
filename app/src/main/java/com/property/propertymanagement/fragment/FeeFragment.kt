@@ -224,16 +224,16 @@ class FeeFragment : Fragment() {
             ) {
                 isLoading = false
                 if (response.isSuccessful && response.body()?.code == 200) {
+                    // 在 loadAllFees 的 onResponse 中
                     val data = response.body()?.data?.records ?: emptyList()
                     val totalPages = response.body()?.data?.pages ?: 0
-
+                    val sortedData = data.sortedBy { it.status == "PAID" } // UNPAID (false) 在前，PAID (true) 在后
                     if (currentPage == 1) {
-                        allFeeList.clear()
                         feeList.clear()
-                        allFeeList.addAll(data)
+                        allFeeList.clear()
+                        allFeeList.addAll(sortedData)
                     }
-
-                    feeList.addAll(data)
+                    feeList.addAll(sortedData)
                     feeAdapter.notifyDataSetChanged()
 
                     isLastPage = currentPage >= totalPages
@@ -270,16 +270,16 @@ class FeeFragment : Fragment() {
             ) {
                 isLoading = false
                 if (response.isSuccessful && response.body()?.code == 200) {
+                    // 在 loadMyFees 的 onResponse 中
                     val data = response.body()?.data?.records ?: emptyList()
                     val totalPages = response.body()?.data?.pages ?: 0
-
+                    val sortedData = data.sortedBy { it.status == "PAID" }
                     if (currentPage == 1) {
-                        allFeeList.clear()
                         feeList.clear()
-                        allFeeList.addAll(data)
+                        allFeeList.clear()
+                        allFeeList.addAll(sortedData)
                     }
-
-                    feeList.addAll(data)
+                    feeList.addAll(sortedData)
                     feeAdapter.notifyDataSetChanged()
 
                     isLastPage = currentPage >= totalPages

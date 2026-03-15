@@ -26,6 +26,13 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 
+
+private val repairStatusPriority = mapOf(
+    "PENDING" to 0,
+    "PROCESSING" to 1,
+    "COMPLETED" to 2
+)
+
 class RepairFragment : Fragment() {
     private lateinit var rvRepairRecords: RecyclerView
     private lateinit var fabAdd: FloatingActionButton
@@ -218,19 +225,19 @@ class RepairFragment : Fragment() {
             ) {
                 isLoading = false
                 if (response.isSuccessful && response.body()?.code == 200) {
+                    // 在 loadAllRepairs 的 onResponse 中
+
                     val data = response.body()?.data?.records ?: emptyList()
                     val totalPages = response.body()?.data?.pages ?: 0
+                    val sortedData = data.sortedBy { repairStatusPriority[it.status] ?: 3 }
 
-                    if (currentPage == 1) {
-                        allRepairList.clear()
-                        repairList.clear()
-                        allRepairList.addAll(data)
-                    }
-
-                    repairList.addAll(data)
+                    repairList.clear()
+                    repairList.addAll(sortedData)
                     repairAdapter.notifyDataSetChanged()
+                    updateEmptyView()
 
                     isLastPage = currentPage >= totalPages
+
                     updateEmptyView()
                 } else {
                     Toast.makeText(requireContext(), "加载失败", Toast.LENGTH_SHORT).show()
@@ -257,17 +264,16 @@ class RepairFragment : Fragment() {
             ) {
                 isLoading = false
                 if (response.isSuccessful && response.body()?.code == 200) {
+                    // 在 loadMyRepairs 的 onResponse 中
+
                     val data = response.body()?.data?.records ?: emptyList()
                     val totalPages = response.body()?.data?.pages ?: 0
+                    val sortedData = data.sortedBy { repairStatusPriority[it.status] ?: 3 }
 
-                    if (currentPage == 1) {
-                        allRepairList.clear()
-                        repairList.clear()
-                        allRepairList.addAll(data)
-                    }
-
-                    repairList.addAll(data)
+                    repairList.clear()
+                    repairList.addAll(sortedData)
                     repairAdapter.notifyDataSetChanged()
+                    updateEmptyView()
 
                     isLastPage = currentPage >= totalPages
                     updateEmptyView()

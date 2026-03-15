@@ -26,6 +26,12 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 
+private val complaintStatusPriority = mapOf(
+    "PENDING" to 0,
+    "PROCESSING" to 1,
+    "RESOLVED" to 2
+)
+
 class ComplaintFragment : Fragment() {
     private lateinit var rvComplaintRecords: RecyclerView
     private lateinit var fabAdd: FloatingActionButton
@@ -218,17 +224,17 @@ class ComplaintFragment : Fragment() {
             ) {
                 isLoading = false
                 if (response.isSuccessful && response.body()?.code == 200) {
+                    // 在 loadAllComplaints 的 onResponse 中
+
                     val data = response.body()?.data?.records ?: emptyList()
                     val totalPages = response.body()?.data?.pages ?: 0
+                    val sortedData = data.sortedBy { complaintStatusPriority[it.status] ?: 3 }
 
-                    if (currentPage == 1) {
-                        allComplaintList.clear()
-                        complaintList.clear()
-                        allComplaintList.addAll(data)
-                    }
-
-                    complaintList.addAll(data)
+                    complaintList.clear()
+                    complaintList.addAll(sortedData)
                     complaintAdapter.notifyDataSetChanged()
+                    updateEmptyView()
+
 
                     isLastPage = currentPage >= totalPages
                     updateEmptyView()
@@ -264,20 +270,20 @@ class ComplaintFragment : Fragment() {
             ) {
                 isLoading = false
                 if (response.isSuccessful && response.body()?.code == 200) {
+                    // 在 loadMyComplaints 的 onResponse 中
+
                     val data = response.body()?.data?.records ?: emptyList()
                     val totalPages = response.body()?.data?.pages ?: 0
+                    val sortedData = data.sortedBy { complaintStatusPriority[it.status] ?: 3 }
 
-                    if (currentPage == 1) {
-                        allComplaintList.clear()
-                        complaintList.clear()
-                        allComplaintList.addAll(data)
-                    }
-
-                    complaintList.addAll(data)
+                    complaintList.clear()
+                    complaintList.addAll(sortedData)
                     complaintAdapter.notifyDataSetChanged()
+                    updateEmptyView()
 
                     isLastPage = currentPage >= totalPages
                     updateEmptyView()
+
                 } else {
                     Toast.makeText(requireContext(), "加载失败", Toast.LENGTH_SHORT).show()
                 }
