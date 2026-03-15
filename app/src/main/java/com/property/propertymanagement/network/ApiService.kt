@@ -263,6 +263,9 @@ interface ApiService {
 
     @PUT("api/user/password")
     fun changePassword(@Body request: ChangePasswordRequest): Call<ApiResult<Void>>
+
+    @GET("api/user/info")
+    fun getUserInfo(): Call<ApiResult<UserInfoResponse>>
 }
 
 
@@ -569,4 +572,14 @@ data class UserCreateRequest(
     val houseNumber: String?,
     val phone: String?,
     val role: String
+)
+data class UserInfoResponse(
+    val id: Long,
+    val username: String,
+    val name: String,
+    val houseNumber: String?,
+    val phone: String?,
+    val role: String,
+    val status: Int,
+    val createTime: String
 )

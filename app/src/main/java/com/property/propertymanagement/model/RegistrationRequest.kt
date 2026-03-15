@@ -12,6 +12,6 @@ data class RegistrationRequest(
     val username: String,
     val password: String,
     val houseNumber: String,
-    val status: RequestStatus, // 使用枚举类型
+    val status: RequestStatus,
     val submitTime: String
 )

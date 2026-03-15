@@ -13,6 +13,8 @@ import com.property.propertymanagement.util.PermissionUtil
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import com.property.propertymanagement.MainActivity
+import com.property.propertymanagement.network.ApiResult
+import com.property.propertymanagement.network.UserInfoResponse
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -66,33 +68,33 @@ class LoginActivity : AppCompatActivity() {
         btnLogin.text = "登录中..."
 
         val loginRequest = LoginRequest(username, password)
-        apiService.login(loginRequest).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<String>> {
+        apiService.login(loginRequest).enqueue(object : Callback<ApiResult<String>> {
             override fun onResponse(
-                call: Call<com.property.propertymanagement.network.ApiResult<String>>,
-                response: Response<com.property.propertymanagement.network.ApiResult<String>>
+                call: Call<ApiResult<String>>,
+                response: Response<ApiResult<String>>
             ) {
-                btnLogin.isEnabled = true
-                btnLogin.text = "登录"
-
                 if (response.isSuccessful) {
                     val result = response.body()
                     if (result?.code == 200 && result.data != null) {
                         val token = result.data
                         saveLoginInfo(username, token)
-                        Toast.makeText(this@LoginActivity, "登录成功", Toast.LENGTH_SHORT).show()
 
-                        // 获取用户信息并跳转
-                        getUserInfoAndNavigate(username, token)
+                        // 获取用户真实信息
+                        fetchUserInfoAndNavigate(token)
                     } else {
+                        btnLogin.isEnabled = true
+                        btnLogin.text = "登录"
                         val errorMsg = result?.msg ?: "登录失败"
                         Toast.makeText(this@LoginActivity, errorMsg, Toast.LENGTH_SHORT).show()
                     }
                 } else {
+                    btnLogin.isEnabled = true
+                    btnLogin.text = "登录"
                     Toast.makeText(this@LoginActivity, "网络请求失败", Toast.LENGTH_SHORT).show()
                 }
             }
 
-            override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<String>>, t: Throwable) {
+            override fun onFailure(call: Call<ApiResult<String>>, t: Throwable) {
                 btnLogin.isEnabled = true
                 btnLogin.text = "登录"
                 Toast.makeText(this@LoginActivity, "网络连接失败: ${t.message}", Toast.LENGTH_SHORT).show()
@@ -100,18 +102,56 @@ class LoginActivity : AppCompatActivity() {
         })
     }
 
-    private fun getUserInfoAndNavigate(username: String, token: String) {
-        // 这里简化处理，实际应该调用获取用户信息的接口
-        // 暂时使用默认值，实际项目中应该从后端获取完整的用户信息
-        val role = if (username == "admin") "ADMIN" else "RESIDENT"
-        val houseNumber = if (username == "admin") null else "A101" // 示例房号
-        val userId = if (username == "admin") 1L else 2L
-        val name = if (username == "admin") "管理员" else "居民用户"
+    // 新增方法：获取用户信息并跳转
+    private fun fetchUserInfoAndNavigate(token: String) {
+        apiService.getUserInfo().enqueue(object : Callback<ApiResult<UserInfoResponse>> {
+            override fun onResponse(
+                call: Call<ApiResult<UserInfoResponse>>,
+                response: Response<ApiResult<UserInfoResponse>>
+            ) {
+                btnLogin.isEnabled = true
+                btnLogin.text = "登录"
 
-        PermissionUtil.saveUser(this, username, role, houseNumber, userId, name)
-        startActivity(Intent(this, MainActivity::class.java))
-        finish()
+                if (response.isSuccessful && response.body()?.code == 200) {
+                    val userInfo = response.body()?.data
+                    if (userInfo != null) {
+                        // 保存完整的用户信息
+                        PermissionUtil.saveUser(
+                            context = this@LoginActivity,
+                            username = userInfo.username,
+                            role = userInfo.role,
+                            houseNumber = userInfo.houseNumber,
+                            userId = userInfo.id,
+                            name = userInfo.name
+                        )
+
+                        // 更新保存的登录时间（用于 Token 过期判断）
+                        val sharedPref = getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+                        with(sharedPref.edit()) {
+                            putLong("login_time", System.currentTimeMillis())
+                            apply()
+                        }
+
+                        // 跳转到主界面
+                        startActivity(Intent(this@LoginActivity, MainActivity::class.java))
+                        finish()
+                    } else {
+                        Toast.makeText(this@LoginActivity, "获取用户信息失败", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    val errorMsg = response.body()?.msg ?: "获取用户信息失败"
+                    Toast.makeText(this@LoginActivity, errorMsg, Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onFailure(call: Call<ApiResult<UserInfoResponse>>, t: Throwable) {
+                btnLogin.isEnabled = true
+                btnLogin.text = "登录"
+                Toast.makeText(this@LoginActivity, "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
+            }
+        })
     }
+
 
     private fun saveLoginInfo(username: String, token: String) {
         val sharedPref = getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
