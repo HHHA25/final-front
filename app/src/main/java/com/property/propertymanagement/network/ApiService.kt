@@ -266,6 +266,9 @@ interface ApiService {
 
     @GET("api/user/info")
     fun getUserInfo(): Call<ApiResult<UserInfoResponse>>
+
+    @POST("api/user/forget-password")
+    fun forgetPassword(@Body request: ForgetPasswordRequest): Call<ApiResult<Void>>
 }
 
 
@@ -582,4 +585,9 @@ data class UserInfoResponse(
     val role: String,
     val status: Int,
     val createTime: String
+)
+data class ForgetPasswordRequest(
+    val username: String,
+    val oldPassword: String,
+    val newPassword: String
 )

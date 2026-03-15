@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.property.propertymanagement.R
@@ -25,6 +26,7 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var btnLogin: MaterialButton
     private lateinit var btnRegister: MaterialButton
     private lateinit var apiService: com.property.propertymanagement.network.ApiService
+    private lateinit var tvForgotPassword: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,6 +45,7 @@ class LoginActivity : AppCompatActivity() {
         etPassword = findViewById(R.id.et_password)
         btnLogin = findViewById(R.id.btn_login)
         btnRegister = findViewById(R.id.btn_register)
+        tvForgotPassword = findViewById(R.id.tv_forgot_password)
     }
 
     private fun setupClickListeners() {
@@ -60,6 +63,11 @@ class LoginActivity : AppCompatActivity() {
 
         btnRegister.setOnClickListener {
             startActivity(Intent(this, RegistrationActivity::class.java))
+        }
+        tvForgotPassword.setOnClickListener {
+            val intent = Intent(this, ForgetPasswordActivity::class.java)
+            intent.putExtra("username", etUsername.text.toString().trim())
+            startActivity(intent)
         }
     }
 
