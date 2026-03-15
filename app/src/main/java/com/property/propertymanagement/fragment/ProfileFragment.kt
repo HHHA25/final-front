@@ -9,15 +9,26 @@ import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import com.google.android.material.textfield.TextInputEditText
+import android.content.Context
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.textfield.TextInputLayout
 import com.property.propertymanagement.R
 import com.property.propertymanagement.activity.BuildingManagementActivity
 import com.property.propertymanagement.activity.HouseManagementActivity
+import com.property.propertymanagement.activity.LoginActivity
 import com.property.propertymanagement.activity.UserManagementActivity
+import com.property.propertymanagement.network.ApiResult
+import com.property.propertymanagement.network.ApiService
+import com.property.propertymanagement.network.ChangePasswordRequest
+import com.property.propertymanagement.network.RetrofitClient
 import com.property.propertymanagement.util.PermissionUtil
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -30,6 +41,7 @@ class ProfileFragment : Fragment() {
     private lateinit var btnLogout: MaterialButton
     private lateinit var btnChangePassword: MaterialButton
     private lateinit var rvProfileItems: RecyclerView
+    private lateinit var apiService: ApiService
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -41,6 +53,7 @@ class ProfileFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        apiService = RetrofitClient.createApiService(requireContext())
         initViews(view)
         loadUserInfo()
         setupClickListeners()
@@ -141,8 +154,177 @@ class ProfileFragment : Fragment() {
             .show()
     }
 
+    // 在 ProfileFragment 类中添加方法
+
     private fun showChangePasswordDialog() {
-        Toast.makeText(requireContext(), "修改密码功能开发中", Toast.LENGTH_SHORT).show()
+        val dialogView = layoutInflater.inflate(R.layout.dialog_change_password, null)
+
+        val tilOldPassword = dialogView.findViewById<TextInputLayout>(R.id.til_old_password)
+        val tilNewPassword = dialogView.findViewById<TextInputLayout>(R.id.til_new_password)
+        val tilConfirmPassword = dialogView.findViewById<TextInputLayout>(R.id.til_confirm_password)
+        val tvError = dialogView.findViewById<TextView>(R.id.tv_error)
+        val etOldPassword = tilOldPassword.editText
+        val etNewPassword = tilNewPassword.editText
+        val etConfirmPassword = tilConfirmPassword.editText
+
+        val btnConfirm = dialogView.findViewById<MaterialButton>(R.id.btn_confirm)
+        val btnCancel = dialogView.findViewById<MaterialButton>(R.id.btn_cancel)
+
+        val dialog = AlertDialog.Builder(requireContext())
+            .setTitle("修改密码")
+            .setView(dialogView)
+            .create()
+
+        btnConfirm.setOnClickListener {
+            // 获取输入
+            val oldPwd = etOldPassword?.text.toString().trim()
+            val newPwd = etNewPassword?.text.toString().trim()
+            val confirmPwd = etConfirmPassword?.text.toString().trim()
+
+            // 清除所有错误
+            tilOldPassword.error = null
+            tilNewPassword.error = null
+            tilConfirmPassword.error = null
+            tvError.visibility = View.GONE
+            tvError.text = ""
+
+            var isValid = true
+
+            // 验证旧密码
+            if (oldPwd.isEmpty()) {
+                tilOldPassword.error = "请输入旧密码"
+                isValid = false
+            }
+
+            // 验证新密码
+            if (newPwd.isEmpty()) {
+                tilNewPassword.error = "请输入新密码"
+                isValid = false
+            } else if (newPwd.length < 6) {
+                tilNewPassword.error = "新密码长度不能少于6位"
+                isValid = false
+            }
+
+            // 验证确认密码
+            if (confirmPwd.isEmpty()) {
+                tilConfirmPassword.error = "请确认新密码"
+                isValid = false
+            } else if (confirmPwd != newPwd) {
+                tilConfirmPassword.error = "两次输入的新密码不一致"
+                isValid = false
+            }
+
+            if (isValid) {
+                // 调用修改密码接口（带回调）
+                changePassword(
+                    oldPwd = oldPwd,
+                    newPwd = newPwd,
+                    onSuccess = {
+                        dialog.dismiss()
+                        Toast.makeText(requireContext(), "密码修改成功，请重新登录", Toast.LENGTH_LONG).show()
+                        logoutAndGoToLogin()
+                    },
+                    onError = { errorMsg ->
+                        // 根据错误信息显示在对应位置
+                        if (errorMsg.contains("旧密码", ignoreCase = true)) {
+                            tilOldPassword.error = errorMsg
+                        } else {
+                            tvError.text = errorMsg
+                            tvError.visibility = View.VISIBLE
+                        }
+                    }
+                )
+            }
+        }
+
+        btnCancel.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
+    }
+
+    /**
+     * 修改密码网络请求（带回调）
+     */
+    private fun changePassword(
+        oldPwd: String,
+        newPwd: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        val request = ChangePasswordRequest(oldPwd, newPwd)
+        apiService.changePassword(request).enqueue(object : Callback<ApiResult<Void>> {
+            override fun onResponse(call: Call<ApiResult<Void>>, response: Response<ApiResult<Void>>) {
+                if (response.isSuccessful && response.body()?.code == 200) {
+                    onSuccess()
+                } else {
+                    val errorMsg = response.body()?.msg ?: "修改密码失败"
+                    onError(errorMsg)
+                }
+            }
+
+            override fun onFailure(call: Call<ApiResult<Void>>, t: Throwable) {
+                onError("网络错误: ${t.message}")
+            }
+        })
+    }
+
+    private fun validatePasswordInput(oldPwd: String, newPwd: String, confirmPwd: String): Boolean {
+        return when {
+            oldPwd.isEmpty() -> {
+                Toast.makeText(requireContext(), "请输入旧密码", Toast.LENGTH_SHORT).show()
+                false
+            }
+            newPwd.isEmpty() -> {
+                Toast.makeText(requireContext(), "请输入新密码", Toast.LENGTH_SHORT).show()
+                false
+            }
+            newPwd.length < 6 -> {
+                Toast.makeText(requireContext(), "新密码长度不能少于6位", Toast.LENGTH_SHORT).show()
+                false
+            }
+            newPwd != confirmPwd -> {
+                Toast.makeText(requireContext(), "两次输入的新密码不一致", Toast.LENGTH_SHORT).show()
+                false
+            }
+            else -> true
+        }
+    }
+
+    private fun changePassword(oldPwd: String, newPwd: String) {
+        val request = ChangePasswordRequest(oldPwd, newPwd)
+
+
+        apiService.changePassword(request).enqueue(object : Callback<ApiResult<Void>> {
+            override fun onResponse(call: Call<ApiResult<Void>>, response: Response<ApiResult<Void>>) {
+                if (response.isSuccessful && response.body()?.code == 200) {
+                    Toast.makeText(requireContext(), "密码修改成功，请重新登录", Toast.LENGTH_LONG).show()
+                    // 清除登录状态并跳转到登录页
+                    logoutAndGoToLogin()
+                } else {
+                    val errorMsg = response.body()?.msg ?: "修改密码失败"
+                    Toast.makeText(requireContext(), errorMsg, Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onFailure(call: Call<ApiResult<Void>>, t: Throwable) {
+                Toast.makeText(requireContext(), "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
+            }
+        })
+    }
+
+    private fun logoutAndGoToLogin() {
+        // 清除用户数据
+        PermissionUtil.clearAllUserData(requireContext())
+        val sharedPref = requireContext().getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+        sharedPref.edit().clear().apply()
+
+        // 跳转到登录页
+        val intent = Intent(requireContext(), LoginActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        startActivity(intent)
+        requireActivity().finish()
     }
 
     private fun showAboutDialog() {

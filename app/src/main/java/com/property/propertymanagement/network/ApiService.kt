@@ -260,6 +260,9 @@ interface ApiService {
 
     @GET("api/registration/admin/processed")
     fun getProcessedRegistrations(): Call<ApiResult<List<RegistrationResponse>>>
+
+    @PUT("api/user/password")
+    fun changePassword(@Body request: ChangePasswordRequest): Call<ApiResult<Void>>
 }
 
 
