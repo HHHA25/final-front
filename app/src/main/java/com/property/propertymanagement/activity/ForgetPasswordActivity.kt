@@ -10,7 +10,6 @@ import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.property.propertymanagement.R
 import com.property.propertymanagement.network.ApiResult
-import com.property.propertymanagement.network.ChangePasswordRequest
 import com.property.propertymanagement.network.ForgetPasswordRequest
 import com.property.propertymanagement.network.RetrofitClient
 import retrofit2.Call

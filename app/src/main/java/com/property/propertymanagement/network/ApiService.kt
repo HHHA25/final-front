@@ -591,3 +591,7 @@ data class BatchFeeAddRequest(
     val month: String,
     val houseNumbers: List<String>
 )
+data class ChangePasswordRequest(
+    val oldPassword: String,
+    val newPassword: String
+)
