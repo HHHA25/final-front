@@ -269,6 +269,10 @@ interface ApiService {
 
     @POST("api/user/forget-password")
     fun forgetPassword(@Body request: ForgetPasswordRequest): Call<ApiResult<Void>>
+
+    // 批量添加物业费（管理员）
+    @POST("api/fee/admin/batch-add")
+    fun batchAddFees(@Body request: BatchFeeAddRequest): Call<ApiResult<Void>>
 }
 
 
@@ -590,4 +594,8 @@ data class ForgetPasswordRequest(
     val username: String,
     val oldPassword: String,
     val newPassword: String
+)
+data class BatchFeeAddRequest(
+    val month: String,
+    val houseNumbers: List<String>
 )

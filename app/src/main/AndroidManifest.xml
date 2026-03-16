@@ -20,9 +20,6 @@
             android:name=".activity.ForgetPasswordActivity"
             android:exported="false" />
         <activity
-            android:name=".activity.ChangePasswordActivity"
-            android:exported="false" />
-        <activity
             android:name=".activity.HouseManagementActivity"
             android:exported="false" />
         <activity
@@ -36,6 +33,8 @@
             android:exported="false" />
         <activity
             android:name=".activity.UserManagementActivity"
+            android:exported="false" />
+        <activity android:name=".activity.BatchAddFeeActivity"
             android:exported="false" />
         <activity
             android:name=".MainActivity"

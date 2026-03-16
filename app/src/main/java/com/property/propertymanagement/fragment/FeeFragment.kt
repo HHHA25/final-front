@@ -1,6 +1,7 @@
 // 路径：com/property/propertymanagement/fragment/FeeFragment.kt
 package com.property.propertymanagement.fragment
 
+import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -18,6 +19,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.textfield.TextInputEditText
 import com.property.propertymanagement.R
+import com.property.propertymanagement.activity.BatchAddFeeActivity
 import com.property.propertymanagement.adapter.FeeAdapter
 import com.property.propertymanagement.network.FeeAddRequest
 import com.property.propertymanagement.network.PayRequest
@@ -79,7 +81,32 @@ class FeeFragment : Fragment() {
         ivClearSearch = view.findViewById(R.id.iv_clear_search)
         tvEmpty = view.findViewById(R.id.tv_empty)
 
-        fabAdd.setOnClickListener { showAddFeeDialog() }
+        fabAdd.setOnClickListener { showAddOptionsDialog() }
+    }
+
+    /**
+     * 显示添加选项：单个添加 / 批量添加
+     */
+    private fun showAddOptionsDialog() {
+        val options = arrayOf("单个添加", "批量添加")
+        AlertDialog.Builder(requireContext())
+            .setTitle("选择添加方式")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> showAddFeeDialog()            // 单个添加（原有）
+                    1 -> navigateToBatchAddFee()       // 批量添加
+                }
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    /**
+     * 跳转到批量添加页面
+     */
+    private fun navigateToBatchAddFee() {
+        val intent = Intent(requireContext(), BatchAddFeeActivity::class.java)
+        startActivity(intent)
     }
 
     private fun initRecyclerView() {
