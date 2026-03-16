@@ -41,10 +41,10 @@ class HouseAdapter(
         holder.tvResident.text = "住户: ${house.residentName ?: "暂无"}"
         holder.tvArea.text = "面积: ${house.area ?: "未设置"}㎡"
         holder.tvUnitType.text = "户型: ${house.unitType ?: "未设置"}"
+
         holder.tvStatus.text = when (house.houseStatus) {
             "OCCUPIED" -> "已入住"
             "VACANT" -> "空置"
-            "RENTED" -> "出租"
             else -> house.houseStatus
         }
 
@@ -52,7 +52,6 @@ class HouseAdapter(
         when (house.houseStatus) {
             "OCCUPIED" -> holder.tvStatus.setBackgroundResource(R.drawable.status_success_bg)
             "VACANT" -> holder.tvStatus.setBackgroundResource(R.drawable.status_pending_bg)
-            "RENTED" -> holder.tvStatus.setBackgroundResource(R.drawable.status_bg)
             else -> holder.tvStatus.setBackgroundResource(R.drawable.status_pending_bg)
         }
 

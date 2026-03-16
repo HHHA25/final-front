@@ -512,19 +512,12 @@ data class HouseResponse(
     val floor: Int,
     val unitType: String?,
     val area: Double?,
-    val roomCount: Int?,
-    val livingRoomCount: Int?,
-    val bathroomCount: Int?,
-    val orientation: String?,
     val houseStatus: String,
     val ownerName: String?,
     val ownerPhone: String?,
     val ownerIdCard: String?,
     val residentName: String?,
     val residentPhone: String?,
-    val residentType: String?,
-    val contractStartDate: String?,
-    val contractEndDate: String?,
     val createTime: String,
     val updateTime: String?
 )
@@ -535,19 +528,12 @@ data class HouseAddRequest(
     val floor: Int,
     val unitType: String?,
     val area: Double?,
-    val roomCount: Int?,
-    val livingRoomCount: Int?,
-    val bathroomCount: Int?,
-    val orientation: String?,
     val houseStatus: String?,
     val ownerName: String?,
     val ownerPhone: String?,
     val ownerIdCard: String?,
     val residentName: String?,
-    val residentPhone: String?,
-    val residentType: String?,
-    val contractStartDate: String?,
-    val contractEndDate: String?
+    val residentPhone: String?
 )
 
 data class HouseUpdateRequest(
@@ -557,20 +543,14 @@ data class HouseUpdateRequest(
     val floor: Int,
     val unitType: String?,
     val area: Double?,
-    val roomCount: Int?,
-    val livingRoomCount: Int?,
-    val bathroomCount: Int?,
-    val orientation: String?,
     val houseStatus: String?,
     val ownerName: String?,
     val ownerPhone: String?,
     val ownerIdCard: String?,
     val residentName: String?,
-    val residentPhone: String?,
-    val residentType: String?,
-    val contractStartDate: String?,
-    val contractEndDate: String?
+    val residentPhone: String?
 )
+
 // 添加用户创建请求类
 data class UserCreateRequest(
     val username: String,
