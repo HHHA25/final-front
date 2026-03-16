@@ -4,7 +4,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/gradient_background">
+    android:background="@color/white">
 
     <!-- 应用图标（修正标签闭合：用/>结尾，无多余空格） -->
     <ImageView
@@ -26,7 +26,7 @@
         android:text="@string/app_name"
         android:textSize="24sp"
         android:textStyle="bold"
-        android:textColor="@color/on_primary"
+        android:textColor="@color/on_surface"
         app:layout_constraintTop_toBottomOf="@+id/iv_logo"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -93,7 +93,7 @@
         android:text="新用户注册"
         android:textAllCaps="false"
         android:backgroundTint="@android:color/transparent"
-        android:textColor="@color/on_primary"
+        android:textColor="@color/primary"
         app:layout_constraintTop_toBottomOf="@+id/btn_login"
         app:layout_constraintStart_toStartOf="@+id/btn_login"
         app:layout_constraintEnd_toEndOf="@+id/btn_login"
@@ -105,8 +105,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="忘记密码？"
-        android:textColor="@color/on_primary"
-        android:textSize="14sp"
+        android:textColor="@color/on_surface"
+        android:textSize="15sp"
         android:padding="8dp"
         android:layout_gravity="center_horizontal"
         app:layout_constraintTop_toBottomOf="@+id/btn_register"
