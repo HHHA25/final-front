@@ -108,6 +108,18 @@ interface ApiService {
     @DELETE("api/parking/admin/delete/{parkingId}")
     fun deleteParking(@Path("parkingId") parkingId: Long): Call<ApiResult<Void>>
 
+    // 删除物业费
+    @DELETE("api/fee/admin/delete/{feeId}")
+    fun deleteFee(@Path("feeId") feeId: Long): Call<ApiResult<Void>>
+
+    // 删除维修记录
+    @DELETE("api/repair/admin/delete/{repairId}")
+    fun deleteRepair(@Path("repairId") repairId: Long): Call<ApiResult<Void>>
+
+    // 删除投诉记录
+    @DELETE("api/complaint/admin/delete/{complaintId}")
+    fun deleteComplaint(@Path("complaintId") complaintId: Long): Call<ApiResult<Void>>
+
     // 获取待审批注册请求数量（管理员）
     @GET("api/registration/admin/pending-count")
     fun getPendingCount(): Call<ApiResult<Int>>

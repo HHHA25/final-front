@@ -18,6 +18,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.textfield.TextInputEditText
 import com.property.propertymanagement.R
 import com.property.propertymanagement.adapter.ComplaintAdapter
+import com.property.propertymanagement.network.ApiResult
 import com.property.propertymanagement.network.ComplaintSubmitRequest
 import com.property.propertymanagement.network.ComplaintUpdateRequest
 import com.property.propertymanagement.network.RetrofitClient
@@ -385,6 +386,10 @@ class ComplaintFragment : Fragment() {
             etHouseNumber.setText(houseNumber)
             etResidentName.setText(residentName)
             etHouseNumber.isEnabled = false
+            dialogView.findViewById<View>(R.id.til_status)?.visibility = View.GONE
+            dialogView.findViewById<View>(R.id.til_submit_time)?.visibility = View.GONE
+            dialogView.findViewById<View>(R.id.til_handle_result)?.visibility = View.GONE
+
         }
 
         AlertDialog.Builder(requireContext())
@@ -511,9 +516,26 @@ class ComplaintFragment : Fragment() {
     private fun showDeleteConfirmationDialog(complaintId: Long) {
         AlertDialog.Builder(requireContext())
             .setTitle("删除记录")
-            .setMessage("确定要删除这条记录吗？")
+            .setMessage("确定要删除这条投诉记录吗？")
             .setPositiveButton("删除") { _, _ ->
-                Toast.makeText(requireContext(), "删除功能暂未实现", Toast.LENGTH_SHORT).show()
+                apiService.deleteComplaint(complaintId).enqueue(object : Callback<ApiResult<Void>> {
+                    override fun onResponse(
+                        call: Call<ApiResult<Void>>,
+                        response: Response<ApiResult<Void>>
+                    ) {
+                        if (response.isSuccessful && response.body()?.code == 200) {
+                            Toast.makeText(requireContext(), "删除成功", Toast.LENGTH_SHORT).show()
+                            loadComplaintData()
+                        } else {
+                            val errorMsg = response.body()?.msg ?: "删除失败"
+                            Toast.makeText(requireContext(), errorMsg, Toast.LENGTH_SHORT).show()
+                        }
+                    }
+
+                    override fun onFailure(call: Call<ApiResult<Void>>, t: Throwable) {
+                        Toast.makeText(requireContext(), "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
+                    }
+                })
             }
             .setNegativeButton("取消", null)
             .show()

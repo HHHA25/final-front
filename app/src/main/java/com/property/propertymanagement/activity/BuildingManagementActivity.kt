@@ -9,14 +9,12 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.property.propertymanagement.R
-import com.property.propertymanagement.adapter.BuildingAdapter
-import com.property.propertymanagement.network.BuildingAddRequest
-import com.property.propertymanagement.network.BuildingUpdateRequest
-import com.property.propertymanagement.network.RetrofitClient
-import com.property.propertymanagement.util.PermissionUtil
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.textfield.TextInputEditText
+import com.property.propertymanagement.R
+import com.property.propertymanagement.adapter.BuildingAdapter
+import com.property.propertymanagement.network.*
+import com.property.propertymanagement.util.PermissionUtil
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -25,8 +23,14 @@ class BuildingManagementActivity : AppCompatActivity() {
     private lateinit var rvBuildings: RecyclerView
     private lateinit var fabAdd: FloatingActionButton
     private lateinit var buildingAdapter: BuildingAdapter
-    private var buildingList = mutableListOf<com.property.propertymanagement.network.BuildingResponse>()
-    private lateinit var apiService: com.property.propertymanagement.network.ApiService
+    private var buildingList = mutableListOf<BuildingResponse>()
+    private lateinit var apiService: ApiService
+
+    // 分页相关变量
+    private var currentPage = 1
+    private val pageSize = 10
+    private var isLoading = false
+    private var isLastPage = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,7 +40,7 @@ class BuildingManagementActivity : AppCompatActivity() {
 
         initViews()
         initRecyclerView()
-        loadBuildings()
+        loadBuildings(true) // 初次加载，刷新模式
 
         // 只有管理员显示添加按钮
         fabAdd.visibility = if (PermissionUtil.isAdmin(this)) View.VISIBLE else View.GONE
@@ -66,31 +70,75 @@ class BuildingManagementActivity : AppCompatActivity() {
             }
         )
 
-        rvBuildings.layoutManager = LinearLayoutManager(this)
+        val layoutManager = LinearLayoutManager(this)
+        rvBuildings.layoutManager = layoutManager
         rvBuildings.adapter = buildingAdapter
+
+        // 添加滚动监听实现分页加载
+        rvBuildings.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                super.onScrolled(recyclerView, dx, dy)
+
+                val visibleItemCount = layoutManager.childCount
+                val totalItemCount = layoutManager.itemCount
+                val firstVisibleItem = layoutManager.findFirstVisibleItemPosition()
+
+                if (!isLoading && !isLastPage) {
+                    if ((visibleItemCount + firstVisibleItem) >= totalItemCount
+                        && firstVisibleItem >= 0
+                        && totalItemCount >= pageSize) {
+
+                        currentPage++
+                        loadBuildings()
+                    }
+                }
+            }
+        })
     }
 
-    private fun loadBuildings() {
-        apiService.getAllBuildings().enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.BuildingPageResponse>> {
+    private fun loadBuildings(isRefresh: Boolean = false) {
+        if (isRefresh) {
+            currentPage = 1
+            isLastPage = false
+            buildingList.clear()
+            buildingAdapter.notifyDataSetChanged()
+        }
+
+        if (isLoading || isLastPage) return
+
+        isLoading = true
+        apiService.getAllBuildings(currentPage, pageSize).enqueue(object : Callback<ApiResult<BuildingPageResponse>> {
             override fun onResponse(
-                call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.BuildingPageResponse>>,
-                response: Response<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.BuildingPageResponse>>
+                call: Call<ApiResult<BuildingPageResponse>>,
+                response: Response<ApiResult<BuildingPageResponse>>
             ) {
+                isLoading = false
                 if (response.isSuccessful && response.body()?.code == 200) {
                     val data = response.body()?.data?.records ?: emptyList()
-                    buildingList.clear()
+                    val totalPages = response.body()?.data?.pages ?: 0
+
+                    if (currentPage == 1) {
+                        buildingList.clear()
+                    }
                     buildingList.addAll(data)
                     buildingAdapter.notifyDataSetChanged()
+
+                    isLastPage = currentPage >= totalPages
                     updateEmptyView()
                 } else {
                     Toast.makeText(this@BuildingManagementActivity, "加载楼栋数据失败", Toast.LENGTH_SHORT).show()
                 }
             }
 
-            override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.BuildingPageResponse>>, t: Throwable) {
+            override fun onFailure(call: Call<ApiResult<BuildingPageResponse>>, t: Throwable) {
+                isLoading = false
                 Toast.makeText(this@BuildingManagementActivity, "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
+    }
+
+    private fun refreshData() {
+        loadBuildings(true)
     }
 
     private fun showAddBuildingDialog() {
@@ -153,27 +201,27 @@ class BuildingManagementActivity : AppCompatActivity() {
     private fun addBuilding(buildingNumber: String, buildingName: String, totalFloors: Int, totalUnits: Int, buildingType: String, completionDate: String) {
         val request = BuildingAddRequest(buildingNumber, buildingName, totalFloors, totalUnits, buildingType, completionDate)
 
-        apiService.addBuilding(request).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<Void>> {
+        apiService.addBuilding(request).enqueue(object : Callback<ApiResult<Void>> {
             override fun onResponse(
-                call: Call<com.property.propertymanagement.network.ApiResult<Void>>,
-                response: Response<com.property.propertymanagement.network.ApiResult<Void>>
+                call: Call<ApiResult<Void>>,
+                response: Response<ApiResult<Void>>
             ) {
                 if (response.isSuccessful && response.body()?.code == 200) {
                     Toast.makeText(this@BuildingManagementActivity, "添加成功", Toast.LENGTH_SHORT).show()
-                    loadBuildings()
+                    refreshData()
                 } else {
                     val errorMsg = response.body()?.msg ?: "添加失败"
                     Toast.makeText(this@BuildingManagementActivity, errorMsg, Toast.LENGTH_SHORT).show()
                 }
             }
 
-            override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<Void>>, t: Throwable) {
+            override fun onFailure(call: Call<ApiResult<Void>>, t: Throwable) {
                 Toast.makeText(this@BuildingManagementActivity, "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
     }
 
-    private fun showBuildingOptionsDialog(building: com.property.propertymanagement.network.BuildingResponse) {
+    private fun showBuildingOptionsDialog(building: BuildingResponse) {
         val options = arrayOf("编辑楼栋", "查看房屋", "删除楼栋")
 
         AlertDialog.Builder(this)
@@ -182,7 +230,6 @@ class BuildingManagementActivity : AppCompatActivity() {
                 when (which) {
                     0 -> showEditBuildingDialog(building)
                     1 -> {
-                        // 跳转到房屋管理页面，显示该楼栋的房屋
                         val intent = Intent(this, HouseManagementActivity::class.java)
                         intent.putExtra("buildingId", building.id)
                         intent.putExtra("buildingName", building.buildingName)
@@ -195,7 +242,7 @@ class BuildingManagementActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun showEditBuildingDialog(building: com.property.propertymanagement.network.BuildingResponse) {
+    private fun showEditBuildingDialog(building: BuildingResponse) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_building_add, null)
         val etBuildingNumber = dialogView.findViewById<TextInputEditText>(R.id.et_building_number)
         val etBuildingName = dialogView.findViewById<TextInputEditText>(R.id.et_building_name)
@@ -204,13 +251,11 @@ class BuildingManagementActivity : AppCompatActivity() {
         val etBuildingType = dialogView.findViewById<TextInputEditText>(R.id.et_building_type)
         val etCompletionDate = dialogView.findViewById<TextInputEditText>(R.id.et_completion_date)
 
-        // 填充现有数据
         etBuildingNumber.setText(building.buildingNumber)
         etBuildingName.setText(building.buildingName)
         etTotalFloors.setText(building.totalFloors.toString())
         etTotalUnits.setText(building.totalUnits.toString())
         etBuildingType.setText(building.buildingType ?: "")
-        // 日期格式化处理...
 
         AlertDialog.Builder(this)
             .setTitle("编辑楼栋")
@@ -236,21 +281,21 @@ class BuildingManagementActivity : AppCompatActivity() {
     private fun updateBuilding(buildingId: Long, buildingNumber: String, buildingName: String, totalFloors: Int, totalUnits: Int, buildingType: String, completionDate: String) {
         val request = BuildingUpdateRequest(buildingId, buildingNumber, buildingName, totalFloors, totalUnits, buildingType, completionDate, "ACTIVE")
 
-        apiService.updateBuilding(request).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<Void>> {
+        apiService.updateBuilding(request).enqueue(object : Callback<ApiResult<Void>> {
             override fun onResponse(
-                call: Call<com.property.propertymanagement.network.ApiResult<Void>>,
-                response: Response<com.property.propertymanagement.network.ApiResult<Void>>
+                call: Call<ApiResult<Void>>,
+                response: Response<ApiResult<Void>>
             ) {
                 if (response.isSuccessful && response.body()?.code == 200) {
                     Toast.makeText(this@BuildingManagementActivity, "更新成功", Toast.LENGTH_SHORT).show()
-                    loadBuildings()
+                    refreshData()
                 } else {
                     val errorMsg = response.body()?.msg ?: "更新失败"
                     Toast.makeText(this@BuildingManagementActivity, errorMsg, Toast.LENGTH_SHORT).show()
                 }
             }
 
-            override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<Void>>, t: Throwable) {
+            override fun onFailure(call: Call<ApiResult<Void>>, t: Throwable) {
                 Toast.makeText(this@BuildingManagementActivity, "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
@@ -268,28 +313,27 @@ class BuildingManagementActivity : AppCompatActivity() {
     }
 
     private fun deleteBuilding(buildingId: Long) {
-        apiService.deleteBuilding(buildingId).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<Void>> {
+        apiService.deleteBuilding(buildingId).enqueue(object : Callback<ApiResult<Void>> {
             override fun onResponse(
-                call: Call<com.property.propertymanagement.network.ApiResult<Void>>,
-                response: Response<com.property.propertymanagement.network.ApiResult<Void>>
+                call: Call<ApiResult<Void>>,
+                response: Response<ApiResult<Void>>
             ) {
                 if (response.isSuccessful && response.body()?.code == 200) {
                     Toast.makeText(this@BuildingManagementActivity, "删除成功", Toast.LENGTH_SHORT).show()
-                    loadBuildings()
+                    refreshData()
                 } else {
                     val errorMsg = response.body()?.msg ?: "删除失败"
                     Toast.makeText(this@BuildingManagementActivity, errorMsg, Toast.LENGTH_SHORT).show()
                 }
             }
 
-            override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<Void>>, t: Throwable) {
+            override fun onFailure(call: Call<ApiResult<Void>>, t: Throwable) {
                 Toast.makeText(this@BuildingManagementActivity, "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
     }
 
-    private fun showBuildingDetail(building: com.property.propertymanagement.network.BuildingResponse) {
-        // 显示楼栋详情，可以显示统计信息等
+    private fun showBuildingDetail(building: BuildingResponse) {
         val message = """
             楼栋编号：${building.buildingNumber}
             楼栋名称：${building.buildingName}

@@ -12,14 +12,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SearchView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.property.propertymanagement.R
-import com.property.propertymanagement.adapter.HouseAdapter
-import com.property.propertymanagement.network.HouseAddRequest
-import com.property.propertymanagement.network.HouseUpdateRequest
-import com.property.propertymanagement.network.RetrofitClient
-import com.property.propertymanagement.util.PermissionUtil
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.textfield.TextInputEditText
+import com.property.propertymanagement.R
+import com.property.propertymanagement.adapter.HouseAdapter
+import com.property.propertymanagement.network.*
+import com.property.propertymanagement.util.PermissionUtil
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -28,16 +26,21 @@ class HouseManagementActivity : AppCompatActivity() {
     private lateinit var rvHouses: RecyclerView
     private lateinit var fabAdd: FloatingActionButton
     private lateinit var houseAdapter: HouseAdapter
-    private var houseList = mutableListOf<com.property.propertymanagement.network.HouseResponse>()
-    private lateinit var apiService: com.property.propertymanagement.network.ApiService
+    private var houseList = mutableListOf<HouseResponse>()
+    private lateinit var apiService: ApiService
     private var buildingId: Long = 0
     private var buildingName: String = ""
+
+    // 分页相关变量
+    private var currentPage = 1
+    private val pageSize = 10
+    private var isLoading = false
+    private var isLastPage = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_house_management)
 
-        // 获取传递的参数
         buildingId = intent.getLongExtra("buildingId", 0)
         buildingName = intent.getStringExtra("buildingName") ?: ""
 
@@ -45,12 +48,10 @@ class HouseManagementActivity : AppCompatActivity() {
 
         initViews()
         initRecyclerView()
-        loadHouses()
+        loadHouses(true)
 
-        // 只有管理员显示添加按钮
         fabAdd.visibility = if (PermissionUtil.isAdmin(this)) View.VISIBLE else View.GONE
 
-        // 设置标题
         supportActionBar?.title = if (buildingId > 0) "$buildingName - 房屋列表" else "房屋管理"
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
     }
@@ -79,11 +80,43 @@ class HouseManagementActivity : AppCompatActivity() {
             }
         )
 
-        rvHouses.layoutManager = LinearLayoutManager(this)
+        val layoutManager = LinearLayoutManager(this)
+        rvHouses.layoutManager = layoutManager
         rvHouses.adapter = houseAdapter
+
+        // 添加滚动监听实现分页加载
+        rvHouses.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                super.onScrolled(recyclerView, dx, dy)
+
+                val visibleItemCount = layoutManager.childCount
+                val totalItemCount = layoutManager.itemCount
+                val firstVisibleItem = layoutManager.findFirstVisibleItemPosition()
+
+                if (!isLoading && !isLastPage) {
+                    if ((visibleItemCount + firstVisibleItem) >= totalItemCount
+                        && firstVisibleItem >= 0
+                        && totalItemCount >= pageSize) {
+
+                        currentPage++
+                        loadHouses()
+                    }
+                }
+            }
+        })
     }
 
-    private fun loadHouses() {
+    private fun loadHouses(isRefresh: Boolean = false) {
+        if (isRefresh) {
+            currentPage = 1
+            isLastPage = false
+            houseList.clear()
+            houseAdapter.notifyDataSetChanged()
+        }
+
+        if (isLoading || isLastPage) return
+
+        isLoading = true
         if (buildingId > 0) {
             loadHousesByBuilding()
         } else {
@@ -92,49 +125,69 @@ class HouseManagementActivity : AppCompatActivity() {
     }
 
     private fun loadHousesByBuilding() {
-        apiService.getHousesByBuilding(buildingId).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.HousePageResponse>> {
+        apiService.getHousesByBuilding(buildingId, currentPage, pageSize).enqueue(object : Callback<ApiResult<HousePageResponse>> {
             override fun onResponse(
-                call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.HousePageResponse>>,
-                response: Response<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.HousePageResponse>>
+                call: Call<ApiResult<HousePageResponse>>,
+                response: Response<ApiResult<HousePageResponse>>
             ) {
+                isLoading = false
                 if (response.isSuccessful && response.body()?.code == 200) {
                     val data = response.body()?.data?.records ?: emptyList()
-                    houseList.clear()
+                    val totalPages = response.body()?.data?.pages ?: 0
+
+                    if (currentPage == 1) {
+                        houseList.clear()
+                    }
                     houseList.addAll(data)
                     houseAdapter.notifyDataSetChanged()
+
+                    isLastPage = currentPage >= totalPages
                     updateEmptyView()
                 } else {
                     Toast.makeText(this@HouseManagementActivity, "加载房屋数据失败", Toast.LENGTH_SHORT).show()
                 }
             }
 
-            override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.HousePageResponse>>, t: Throwable) {
+            override fun onFailure(call: Call<ApiResult<HousePageResponse>>, t: Throwable) {
+                isLoading = false
                 Toast.makeText(this@HouseManagementActivity, "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
     }
 
     private fun loadAllHouses() {
-        apiService.getAllHouses().enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.HousePageResponse>> {
+        apiService.getAllHouses(currentPage, pageSize).enqueue(object : Callback<ApiResult<HousePageResponse>> {
             override fun onResponse(
-                call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.HousePageResponse>>,
-                response: Response<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.HousePageResponse>>
+                call: Call<ApiResult<HousePageResponse>>,
+                response: Response<ApiResult<HousePageResponse>>
             ) {
+                isLoading = false
                 if (response.isSuccessful && response.body()?.code == 200) {
                     val data = response.body()?.data?.records ?: emptyList()
-                    houseList.clear()
+                    val totalPages = response.body()?.data?.pages ?: 0
+
+                    if (currentPage == 1) {
+                        houseList.clear()
+                    }
                     houseList.addAll(data)
                     houseAdapter.notifyDataSetChanged()
+
+                    isLastPage = currentPage >= totalPages
                     updateEmptyView()
                 } else {
                     Toast.makeText(this@HouseManagementActivity, "加载房屋数据失败", Toast.LENGTH_SHORT).show()
                 }
             }
 
-            override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.HousePageResponse>>, t: Throwable) {
+            override fun onFailure(call: Call<ApiResult<HousePageResponse>>, t: Throwable) {
+                isLoading = false
                 Toast.makeText(this@HouseManagementActivity, "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
+    }
+
+    private fun refreshData() {
+        loadHouses(true)
     }
 
     private fun showAddHouseDialog() {
@@ -179,7 +232,8 @@ class HouseManagementActivity : AppCompatActivity() {
 
                     addHouse(
                         buildingId, houseNumber, floor, unitType, area,
-                        houseStatus, ownerName, ownerPhone, ownerIdCard, residentName, residentPhone)
+                        houseStatus, ownerName, ownerPhone, ownerIdCard, residentName, residentPhone
+                    )
                 }
             }
             .setNegativeButton("取消", null)
@@ -212,29 +266,30 @@ class HouseManagementActivity : AppCompatActivity() {
     ) {
         val request = HouseAddRequest(
             buildingId, houseNumber, floor, unitType, area,
-            houseStatus, ownerName, ownerPhone, ownerIdCard, residentName, residentPhone)
+            houseStatus, ownerName, ownerPhone, ownerIdCard, residentName, residentPhone
+        )
 
-        apiService.addHouse(request).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<Void>> {
+        apiService.addHouse(request).enqueue(object : Callback<ApiResult<Void>> {
             override fun onResponse(
-                call: Call<com.property.propertymanagement.network.ApiResult<Void>>,
-                response: Response<com.property.propertymanagement.network.ApiResult<Void>>
+                call: Call<ApiResult<Void>>,
+                response: Response<ApiResult<Void>>
             ) {
                 if (response.isSuccessful && response.body()?.code == 200) {
                     Toast.makeText(this@HouseManagementActivity, "添加成功", Toast.LENGTH_SHORT).show()
-                    loadHouses()
+                    refreshData()
                 } else {
                     val errorMsg = response.body()?.msg ?: "添加失败"
                     Toast.makeText(this@HouseManagementActivity, errorMsg, Toast.LENGTH_SHORT).show()
                 }
             }
 
-            override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<Void>>, t: Throwable) {
+            override fun onFailure(call: Call<ApiResult<Void>>, t: Throwable) {
                 Toast.makeText(this@HouseManagementActivity, "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
     }
 
-    private fun showHouseOptionsDialog(house: com.property.propertymanagement.network.HouseResponse) {
+    private fun showHouseOptionsDialog(house: HouseResponse) {
         val options = arrayOf("编辑房屋", "删除房屋")
 
         AlertDialog.Builder(this)
@@ -249,7 +304,7 @@ class HouseManagementActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun showEditHouseDialog(house: com.property.propertymanagement.network.HouseResponse) {
+    private fun showEditHouseDialog(house: HouseResponse) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_house_add, null)
         val etBuildingId = dialogView.findViewById<TextInputEditText>(R.id.et_building_id)
         val etHouseNumber = dialogView.findViewById<TextInputEditText>(R.id.et_house_number)
@@ -263,7 +318,6 @@ class HouseManagementActivity : AppCompatActivity() {
         val etResidentName = dialogView.findViewById<TextInputEditText>(R.id.et_resident_name)
         val etResidentPhone = dialogView.findViewById<TextInputEditText>(R.id.et_resident_phone)
 
-        // 填充现有数据
         etBuildingId.setText(house.buildingId.toString())
         etHouseNumber.setText(house.houseNumber)
         etFloor.setText(house.floor.toString())
@@ -276,7 +330,6 @@ class HouseManagementActivity : AppCompatActivity() {
         etResidentName.setText(house.residentName ?: "")
         etResidentPhone.setText(house.residentPhone ?: "")
 
-        // 禁止修改楼栋ID
         etBuildingId.isEnabled = false
 
         AlertDialog.Builder(this)
@@ -300,8 +353,10 @@ class HouseManagementActivity : AppCompatActivity() {
                     val floor = floorStr.toInt()
                     val area = if (areaStr.isNotEmpty()) areaStr.toDouble() else null
 
-                    updateHouse(house.id, buildingId, houseNumber, floor, unitType, area
-                        , houseStatus, ownerName, ownerPhone, ownerIdCard, residentName, residentPhone)
+                    updateHouse(
+                        house.id, buildingId, houseNumber, floor, unitType, area,
+                        houseStatus, ownerName, ownerPhone, ownerIdCard, residentName, residentPhone
+                    )
                 }
             }
             .setNegativeButton("取消", null)
@@ -316,23 +371,24 @@ class HouseManagementActivity : AppCompatActivity() {
     ) {
         val request = HouseUpdateRequest(
             houseId, buildingId, houseNumber, floor, unitType, area, houseStatus,
-            ownerName, ownerPhone, ownerIdCard, residentName, residentPhone)
+            ownerName, ownerPhone, ownerIdCard, residentName, residentPhone
+        )
 
-        apiService.updateHouse(request).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<Void>> {
+        apiService.updateHouse(request).enqueue(object : Callback<ApiResult<Void>> {
             override fun onResponse(
-                call: Call<com.property.propertymanagement.network.ApiResult<Void>>,
-                response: Response<com.property.propertymanagement.network.ApiResult<Void>>
+                call: Call<ApiResult<Void>>,
+                response: Response<ApiResult<Void>>
             ) {
                 if (response.isSuccessful && response.body()?.code == 200) {
                     Toast.makeText(this@HouseManagementActivity, "更新成功", Toast.LENGTH_SHORT).show()
-                    loadHouses()
+                    refreshData()
                 } else {
                     val errorMsg = response.body()?.msg ?: "更新失败"
                     Toast.makeText(this@HouseManagementActivity, errorMsg, Toast.LENGTH_SHORT).show()
                 }
             }
 
-            override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<Void>>, t: Throwable) {
+            override fun onFailure(call: Call<ApiResult<Void>>, t: Throwable) {
                 Toast.makeText(this@HouseManagementActivity, "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
@@ -350,27 +406,27 @@ class HouseManagementActivity : AppCompatActivity() {
     }
 
     private fun deleteHouse(houseId: Long) {
-        apiService.deleteHouse(houseId).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<Void>> {
+        apiService.deleteHouse(houseId).enqueue(object : Callback<ApiResult<Void>> {
             override fun onResponse(
-                call: Call<com.property.propertymanagement.network.ApiResult<Void>>,
-                response: Response<com.property.propertymanagement.network.ApiResult<Void>>
+                call: Call<ApiResult<Void>>,
+                response: Response<ApiResult<Void>>
             ) {
                 if (response.isSuccessful && response.body()?.code == 200) {
                     Toast.makeText(this@HouseManagementActivity, "删除成功", Toast.LENGTH_SHORT).show()
-                    loadHouses()
+                    refreshData()
                 } else {
                     val errorMsg = response.body()?.msg ?: "删除失败"
                     Toast.makeText(this@HouseManagementActivity, errorMsg, Toast.LENGTH_SHORT).show()
                 }
             }
 
-            override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<Void>>, t: Throwable) {
+            override fun onFailure(call: Call<ApiResult<Void>>, t: Throwable) {
                 Toast.makeText(this@HouseManagementActivity, "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
     }
 
-    private fun showHouseDetail(house: com.property.propertymanagement.network.HouseResponse) {
+    private fun showHouseDetail(house: HouseResponse) {
         val message = """
             房号：${house.houseNumber}
             楼栋：${house.buildingName ?: house.buildingNumber}
@@ -404,14 +460,6 @@ class HouseManagementActivity : AppCompatActivity() {
         }
     }
 
-    private fun getResidentTypeText(type: String?): String {
-        return when (type) {
-            "OWNER" -> "业主自住"
-            "TENANT" -> "租客"
-            else -> type ?: "未知"
-        }
-    }
-
     private fun updateEmptyView() {
         findViewById<TextView>(R.id.tv_empty).visibility =
             if (houseList.isEmpty()) View.VISIBLE else View.GONE
@@ -420,7 +468,6 @@ class HouseManagementActivity : AppCompatActivity() {
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.menu_house_management_menu, menu)
 
-        // 设置搜索功能
         val searchItem = menu?.findItem(R.id.action_search)
         val searchView = searchItem?.actionView as? SearchView
 
@@ -432,7 +479,7 @@ class HouseManagementActivity : AppCompatActivity() {
 
             override fun onQueryTextChange(newText: String?): Boolean {
                 if (newText.isNullOrEmpty()) {
-                    loadHouses()
+                    refreshData()
                 }
                 return true
             }
@@ -447,31 +494,37 @@ class HouseManagementActivity : AppCompatActivity() {
                 finish()
                 true
             }
-            R.id.action_search -> {
-                true
-            }
+            R.id.action_search -> true
             else -> super.onOptionsItemSelected(item)
         }
     }
 
     private fun searchHouses(keyword: String) {
-        apiService.searchHouses(keyword, keyword).enqueue(object : Callback<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.HousePageResponse>> {
+        // 搜索时重置分页
+        currentPage = 1
+        isLastPage = false
+        isLoading = false
+        houseList.clear()
+        houseAdapter.notifyDataSetChanged()
+
+        apiService.searchHouses(keyword, keyword, currentPage, pageSize).enqueue(object : Callback<ApiResult<HousePageResponse>> {
             override fun onResponse(
-                call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.HousePageResponse>>,
-                response: Response<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.HousePageResponse>>
+                call: Call<ApiResult<HousePageResponse>>,
+                response: Response<ApiResult<HousePageResponse>>
             ) {
                 if (response.isSuccessful && response.body()?.code == 200) {
                     val data = response.body()?.data?.records ?: emptyList()
-                    houseList.clear()
+                    val totalPages = response.body()?.data?.pages ?: 0
                     houseList.addAll(data)
                     houseAdapter.notifyDataSetChanged()
+                    isLastPage = currentPage >= totalPages
                     updateEmptyView()
                 } else {
                     Toast.makeText(this@HouseManagementActivity, "搜索失败", Toast.LENGTH_SHORT).show()
                 }
             }
 
-            override fun onFailure(call: Call<com.property.propertymanagement.network.ApiResult<com.property.propertymanagement.network.HousePageResponse>>, t: Throwable) {
+            override fun onFailure(call: Call<ApiResult<HousePageResponse>>, t: Throwable) {
                 Toast.makeText(this@HouseManagementActivity, "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
