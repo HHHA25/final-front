@@ -14,8 +14,8 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
-    private const val BASE_URL = "http://192.168.1.148:8080/" // 真机访问
-    // private const val BASE_URL = "http://10.0.2.2:8080/" // 模拟器访问本地
+    //private const val BASE_URL = "http://192.168.1.148:8080/" // 真机访问
+    private const val BASE_URL = "http://10.0.2.2:8080/" // 模拟器访问本地
 
     private const val TAG = "RetrofitClient"
 
