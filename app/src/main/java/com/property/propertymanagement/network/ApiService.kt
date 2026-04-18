@@ -285,6 +285,9 @@ interface ApiService {
     // 批量添加物业费（管理员）
     @POST("api/fee/admin/batch-add")
     fun batchAddFees(@Body request: BatchFeeAddRequest): Call<ApiResult<Void>>
+
+    @PUT("api/fee/admin/update")
+    fun updateFee(@Body request: FeeUpdateRequest): Call<ApiResult<Void>>
 }
 
 
@@ -594,4 +597,11 @@ data class BatchFeeAddRequest(
 data class ChangePasswordRequest(
     val oldPassword: String,
     val newPassword: String
+)
+data class FeeUpdateRequest(
+    val id: Long,
+    val houseNumber: String,
+    val residentName: String,
+    val amount: Double,
+    val month: String
 )

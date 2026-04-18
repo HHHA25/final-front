@@ -23,6 +23,7 @@ import com.property.propertymanagement.activity.BatchAddFeeActivity
 import com.property.propertymanagement.adapter.FeeAdapter
 import com.property.propertymanagement.network.ApiResult
 import com.property.propertymanagement.network.FeeAddRequest
+import com.property.propertymanagement.network.FeeUpdateRequest
 import com.property.propertymanagement.network.PayRequest
 import com.property.propertymanagement.network.RetrofitClient
 import com.property.propertymanagement.util.PermissionUtil
@@ -499,7 +500,22 @@ class FeeFragment : Fragment() {
     }
 
     private fun updateFee(feeId: Long, houseNumber: String, residentName: String, amount: Double, month: String) {
-        Toast.makeText(requireContext(), "更新功能暂未实现", Toast.LENGTH_SHORT).show()
+        val request = FeeUpdateRequest(feeId, houseNumber, residentName, amount, month)
+        apiService.updateFee(request).enqueue(object : Callback<ApiResult<Void>> {
+            override fun onResponse(call: Call<ApiResult<Void>>, response: Response<ApiResult<Void>>) {
+                if (response.isSuccessful && response.body()?.code == 200) {
+                    Toast.makeText(requireContext(), "更新成功", Toast.LENGTH_SHORT).show()
+                    refreshData()
+                } else {
+                    val errorMsg = response.body()?.msg ?: "更新失败"
+                    Toast.makeText(requireContext(), errorMsg, Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onFailure(call: Call<ApiResult<Void>>, t: Throwable) {
+                Toast.makeText(requireContext(), "网络错误: ${t.message}", Toast.LENGTH_SHORT).show()
+            }
+        })
     }
 
     private fun showPayFeeDialog(feeId: Long) {
